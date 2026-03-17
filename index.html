@@ -1,0 +1,867 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes">
+    <title>练习</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            background: #f2f0e9;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 10px;
+        }
+        .app-container {
+            width: 100%;
+            max-width: 600px;
+            background: rgba(255, 255, 255, 0.75);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-radius: 40px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.08), 0 4px 12px rgba(0, 0, 0, 0.03);
+            padding: 20px 16px 30px;
+            border: 1px solid rgba(255,255,255,0.6);
+        }
+        h1 {
+            font-size: 1.7rem;
+            font-weight: 500;
+            letter-spacing: -0.01em;
+            color: #2e2a28;
+            text-align: center;
+            margin-bottom: 6px;
+        }
+        .sub {
+            text-align: center;
+            color: #6b5f58;
+            font-size: 0.9rem;
+            margin-bottom: 20px;
+            font-weight: 350;
+        }
+        .tab-bar {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 24px;
+            background: #e9e2da;
+            padding: 6px;
+            border-radius: 100px;
+        }
+        .tab {
+            flex: 1;
+            text-align: center;
+            padding: 10px 0;
+            border-radius: 40px;
+            font-weight: 500;
+            color: #4a4540;
+            transition: all 0.2s;
+            cursor: pointer;
+            background: transparent;
+            border: none;
+            font-size: 1rem;
+        }
+        .tab.active {
+            background: white;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            color: #1f1c19;
+            font-weight: 550;
+        }
+        .panel {
+            display: none;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+        .panel.active {
+            display: block;
+            opacity: 1;
+        }
+
+        /* 通用画布卡片 */
+        .canvas-area {
+            background: #ffffffc4;
+            border-radius: 32px;
+            padding: 20px 10px 10px 10px;
+            box-shadow: inset 0 2px 6px rgba(0,0,0,0.02), 0 8px 20px rgba(90, 60, 40, 0.08);
+            margin-bottom: 20px;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 20px;
+        }
+        .canvas-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .canvas-label {
+            font-size: 0.85rem;
+            color: #5f534b;
+            margin-top: 6px;
+            font-weight: 450;
+        }
+        canvas {
+            display: block;
+            border-radius: 24px;
+            background: white;
+            box-shadow: 0 6px 14px rgba(80, 60, 40, 0.12);
+            width: 100%;
+            height: auto;
+            border: 2px solid #fff5eb;
+        }
+        /* 固定逻辑像素，但css缩放 */
+        canvas.grid-canvas {
+            width: 100%;
+            max-width: 400px;
+            aspect-ratio: 1/1;
+        }
+        .dual-canvas canvas {
+            width: 100%;
+            max-width: 190px;
+            aspect-ratio: 1/1;
+        }
+        .line-length-canvas canvas {
+            width: 100%;
+            max-width: 180px;
+            aspect-ratio: 1/1;
+        }
+
+        /* 控制条 */
+        .control-panel {
+            background: #f6f2eb;
+            border-radius: 28px;
+            padding: 18px 14px;
+            margin-top: 10px;
+            border: 1px solid rgba(255,255,255,0.7);
+        }
+        .btn-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px 6px;
+            margin-bottom: 14px;
+            align-items: center;
+        }
+        .btn, .btn-sm {
+            background: white;
+            border: 1px solid #dcd3ca;
+            color: #2f2a25;
+            border-radius: 50px;
+            padding: 10px 18px;
+            font-size: 0.95rem;
+            font-weight: 480;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+            cursor: pointer;
+            transition: 0.1s;
+            flex: 0 0 auto;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .btn.active {
+            background: #d1c3b6;
+            border-color: #a48e7c;
+            color: #1e1612;
+            font-weight: 550;
+        }
+        .btn-sm {
+            padding: 7px 14px;
+            font-size: 0.9rem;
+        }
+        .btn-sm.selected-side {
+            background: #b5a088;
+            color: white;
+            border-color: #7f6a58;
+        }
+        /* 比例按钮加大字体 */
+        .fraction-btn {
+            font-size: 1.2rem;
+            font-weight: 600;
+            padding: 8px 16px;
+        }
+        /* 比例按钮背景色 */
+        .fraction-0-5 { background-color: #FF6B6B; color: white; border-color: #d44; }
+        .fraction-0-333 { background-color: #4ECDC4; color: white; border-color: #2a9; }
+        .fraction-0-25 { background-color: #FFD93D; color: #333; border-color: #ea0; }
+        .fraction-0-2 { background-color: #6A4E9B; color: white; border-color: #537; }
+        .fraction-0-1667 { background-color: #FF8C42; color: white; border-color: #e60; }
+
+        input[type="range"] {
+            flex: 1;
+            min-width: 160px;
+            height: 6px;
+            border-radius: 20px;
+            background: #d9cdc1;
+        }
+        .inline-label {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background: #e9dfd5;
+            padding: 4px 14px;
+            border-radius: 40px;
+            font-size: 0.9rem;
+        }
+        .number-input {
+            width: 75px;
+            padding: 8px 10px;
+            border-radius: 30px;
+            border: 1px solid #cdbfb2;
+            background: white;
+            font-size: 1rem;
+            text-align: center;
+        }
+        .result-badge {
+            background: #dccfc2;
+            border-radius: 30px;
+            padding: 8px 18px;
+            font-weight: 480;
+            font-size: 1rem;
+            color: #2d241e;
+            text-align: center;
+        }
+        .flex-between {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        hr {
+            border: none;
+            border-top: 2px dashed #dacfc6;
+            margin: 20px 0 15px;
+        }
+        .toggle-group {
+            display: flex;
+            gap: 5px;
+            background: #e4dbd2;
+            padding: 4px;
+            border-radius: 40px;
+        }
+        .toggle-option {
+            padding: 6px 16px;
+            border-radius: 30px;
+            background: transparent;
+            border: none;
+            font-size: 0.9rem;
+            color: #4f463f;
+            cursor: pointer;
+        }
+        .toggle-option.selected {
+            background: white;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+            font-weight: 550;
+            color: #231f1b;
+        }
+        .checkbox-label {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            background: white;
+            padding: 5px 14px;
+            border-radius: 40px;
+        }
+        .step-group {
+            display: flex;
+            gap: 4px;
+            background: #e4dbd2;
+            padding: 4px;
+            border-radius: 40px;
+        }
+        .step-btn {
+            background: white;
+            border: none;
+            border-radius: 30px;
+            padding: 5px 10px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+        }
+        .angle-display {
+            background: #e9dfd5;
+            border-radius: 30px;
+            padding: 5px 15px;
+            font-weight: 600;
+            font-size: 1rem;
+        }
+        /* 隐藏比例输入框 */
+        .hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+<div class="app-container">
+    <h1>练习</h1>
+    <div class="sub">格子 / 斜率(点对点) / 线段(独立角度)</div>
+
+    <!-- Tabs -->
+    <div class="tab-bar">
+        <button class="tab active" data-tab="space">◫ 空间比例</button>
+        <button class="tab" data-tab="slope">📐 斜率匹配</button>
+        <button class="tab" data-tab="length">📏 线条比例</button>
+    </div>
+
+    <!-- 空间比例面板 (两人移动，基于最近边界) -->
+    <div id="spacePanel" class="panel active">
+        <div class="canvas-area">
+            <canvas id="gridCanvas" class="grid-canvas" width="400" height="400"></canvas>
+        </div>
+        <div class="control-panel">
+            <div class="btn-row">
+                <button class="btn" id="newGridBtn">✨ 新格子·点</button>
+                <button class="btn" id="undoAuxBtn">↩ 撤销一步</button>
+                <div class="inline-label">
+                    <span>透明度</span>
+                    <input type="range" id="lineAlphaSlider" min="0" max="1" step="0.05" value="0.7">
+                </div>
+                <button class="btn-sm" id="toggleAuxBtn">👁 隐藏辅助线</button>
+            </div>
+            <div class="btn-row">
+                <span style="font-weight:500; margin-right:4px;">比例:</span>
+                <button class="btn-sm fraction-btn fraction-0-5" data-fraction="0.5">½</button>
+                <button class="btn-sm fraction-btn fraction-0-333" data-fraction="0.333">⅓</button>
+                <button class="btn-sm fraction-btn fraction-0-25" data-fraction="0.25">¼</button>
+                <button class="btn-sm fraction-btn fraction-0-2" data-fraction="0.2">⅕</button>
+                <button class="btn-sm fraction-btn fraction-0-1667" data-fraction="0.1667">⅙</button>
+                <div class="toggle-group" id="orientationToggle">
+                    <button class="toggle-option selected" data-orient="horizontal">⬌ 横线</button>
+                    <button class="toggle-option" data-orient="vertical">⬍ 纵线</button>
+                </div>
+            </div>
+            <div class="btn-row" id="sideButtons">
+                <span style="font-weight:500;">方向:</span>
+                <button class="btn-sm" data-side="up">▲ 下/左</button>
+                <button class="btn-sm" data-side="down">▼ 上/右</button>
+            </div>
+            <div class="flex-between">
+                <span></span>
+                <span class="result-badge" id="spaceHint">横线: -- | 纵线: --</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- 斜率面板 (左侧两点，右侧长线，步进按钮，无翻转) -->
+    <div id="slopePanel" class="panel">
+        <div class="canvas-area dual-canvas">
+            <div class="canvas-wrapper"><canvas id="slopeCanvas1" width="200" height="200"></canvas><div class="canvas-label">两点连线 (目测斜率)</div></div>
+            <div class="canvas-wrapper"><canvas id="slopeCanvas2" width="200" height="200"></canvas><div class="canvas-label">调节长线</div></div>
+        </div>
+        <div class="control-panel">
+            <div class="btn-row" style="justify-content:center; flex-wrap: wrap;">
+                <div class="step-group">
+                    <button class="step-btn" id="angleStep1M">−1°</button>
+                    <button class="step-btn" id="angleStep5M">−5°</button>
+                    <button class="step-btn" id="angleStep10M">−10°</button>
+                    <button class="step-btn" id="angleStep20M">−20°</button>
+                </div>
+                <div class="step-group">
+                    <button class="step-btn" id="angleStep1P">+1°</button>
+                    <button class="step-btn" id="angleStep5P">+5°</button>
+                    <button class="step-btn" id="angleStep10P">+10°</button>
+                    <button class="step-btn" id="angleStep20P">+20°</button>
+                </div>
+                <span class="angle-display" id="angleDisplay">0°</span>
+                <button class="btn" id="submitAngleBtn">✓ 提交比对</button>
+                <button class="btn" id="resetAngleBtn">↺ 重置斜率</button>
+            </div>
+            <div class="result-badge" id="angleHint">↝ 调整右侧长线角度</div>
+        </div>
+    </div>
+
+    <!-- 线条比例面板 (固定比例1~5，线宽调细，提交后画校验线) -->
+    <div id="lengthPanel" class="panel">
+        <div class="canvas-area line-length-canvas">
+            <div class="canvas-wrapper"><canvas id="lengthCanvas1" width="200" height="200"></canvas><div class="canvas-label">线段 A</div></div>
+            <div class="canvas-wrapper"><canvas id="lengthCanvas2" width="200" height="200"></canvas><div class="canvas-label">线段 B</div></div>
+        </div>
+        <div class="control-panel">
+            <div class="flex-between">
+                <span class="inline-label">比例范围 1 ~ 5</span>
+                <div class="checkbox-label"><input type="checkbox" id="randomAngleCheck"> 随机角度(独立)</div>
+            </div>
+            <div class="btn-row" style="margin-top:14px;">
+                <input type="number" id="guessRatioInput" class="number-input" placeholder="估算 B/A" step="0.1" style="flex:2;">
+                <button class="btn-sm" id="submitLengthBtn">提交估算</button>
+                <button class="btn-sm" id="resetLengthBtn">⟲ 新线段</button>
+            </div>
+            <div class="result-badge" id="lengthHint">🔍 输入比例后提交查看结果</div>
+        </div>
+    </div>
+</div>
+
+<script>
+    (function() {
+        // ---------- 全局工具 ----------
+        const tabs = document.querySelectorAll('.tab');
+        const panels = {
+            space: document.getElementById('spacePanel'),
+            slope: document.getElementById('slopePanel'),
+            length: document.getElementById('lengthPanel')
+        };
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                tabs.forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                const target = tab.dataset.tab;
+                Object.values(panels).forEach(p => p.classList.remove('active'));
+                panels[target].classList.add('active');
+                if (target === 'space') drawGridCanvas();
+                else if (target === 'slope') {
+                    document.getElementById('angleHint').innerText = '↝ 调整右侧长线角度';
+                    updateAngleDisplay();
+                    drawSlopeCanvases();
+                } else if (target === 'length') {
+                    document.getElementById('lengthHint').innerText = '🔍 输入比例后提交查看结果';
+                    drawLengthCanvases(false);
+                }
+            });
+        });
+
+        // ---------- 空间比例模块 (基于最近边界移动，带内边距) ----------
+        const gridCanvas = document.getElementById('gridCanvas');
+        const ctxGrid = gridCanvas.getContext('2d');
+        const PAD = 20;
+        const SIZE = 400;
+        const INNER_SIZE = SIZE - 2 * PAD;
+
+        let gridPoint = { x: 0.5, y: 0.5 };
+
+        let hLines = []; // { y, frac }
+        let vLines = []; // { x, frac }
+        let curH = null;
+        let curV = null;
+        let history = [];
+
+        let showAux = true;
+        let alpha = 0.7;
+        let currentOrient = 'horizontal';
+        let currentSide = 'up';
+
+        function getColorForFraction(frac) {
+            if (frac === 0.5) return '#FF6B6B';
+            if (frac === 0.333) return '#4ECDC4';
+            if (frac === 0.25) return '#FFD93D';
+            if (frac === 0.2) return '#6A4E9B';
+            if (frac === 0.1667) return '#FF8C42';
+            return '#888';
+        }
+
+        function randomPoint() {
+            return { x: Math.random() * 0.8 + 0.1, y: Math.random() * 0.8 + 0.1 };
+        }
+
+        function newGrid() {
+            gridPoint = randomPoint();
+            hLines = [];
+            vLines = [];
+            curH = null;
+            curV = null;
+            history = [];
+            drawGridCanvas();
+        }
+        document.getElementById('newGridBtn').addEventListener('click', newGrid);
+
+        document.getElementById('undoAuxBtn').addEventListener('click', () => {
+            if (history.length === 0) return;
+            let last = history.pop();
+            hLines = last.hLines.map(l => ({ y: l.y, frac: l.frac }));
+            vLines = last.vLines.map(l => ({ x: l.x, frac: l.frac }));
+            curH = last.curH;
+            curV = last.curV;
+            drawGridCanvas();
+        });
+
+        document.querySelectorAll('[data-fraction]').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const frac = parseFloat(e.target.dataset.fraction);
+                let type = currentOrient;
+                let side = currentSide;
+
+                history.push({
+                    hLines: hLines.map(l => ({ y: l.y, frac: l.frac })),
+                    vLines: vLines.map(l => ({ x: l.x, frac: l.frac })),
+                    curH: curH,
+                    curV: curV
+                });
+
+                if (type === 'horizontal') {
+                    if (curH === null) {
+                        if (side === 'up') curH = 0 + 1 * frac; // 从下向上
+                        else curH = 1 - 1 * frac; // 从上向下
+                        hLines.push({ y: curH, frac: frac });
+                    } else {
+                        if (side === 'up') {
+                            let candidates = hLines.map(l => l.y).filter(y => y > curH);
+                            candidates.push(1);
+                            let nearest = Math.min(...candidates);
+                            let distance = nearest - curH;
+                            let move = distance * frac;
+                            curH = curH + move;
+                        } else {
+                            let candidates = hLines.map(l => l.y).filter(y => y < curH);
+                            candidates.push(0);
+                            let nearest = Math.max(...candidates);
+                            let distance = curH - nearest;
+                            let move = distance * frac;
+                            curH = curH - move;
+                        }
+                        hLines.push({ y: curH, frac: frac });
+                    }
+                } else {
+                    if (curV === null) {
+                        if (side === 'up') curV = 1 - 1 * frac; // 从右向左
+                        else curV = 0 + 1 * frac; // 从左向右
+                        vLines.push({ x: curV, frac: frac });
+                    } else {
+                        if (side === 'up') {
+                            let candidates = vLines.map(l => l.x).filter(x => x < curV);
+                            candidates.push(0);
+                            let nearest = Math.max(...candidates);
+                            let distance = curV - nearest;
+                            let move = distance * frac;
+                            curV = curV - move;
+                        } else {
+                            let candidates = vLines.map(l => l.x).filter(x => x > curV);
+                            candidates.push(1);
+                            let nearest = Math.min(...candidates);
+                            let distance = nearest - curV;
+                            let move = distance * frac;
+                            curV = curV + move;
+                        }
+                        vLines.push({ x: curV, frac: frac });
+                    }
+                }
+                drawGridCanvas();
+            });
+        });
+
+        document.querySelectorAll('[data-orient]').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                document.querySelectorAll('[data-orient]').forEach(b => b.classList.remove('selected'));
+                e.target.classList.add('selected');
+                currentOrient = e.target.dataset.orient;
+            });
+        });
+
+        const sideButtons = document.querySelectorAll('[data-side]');
+        sideButtons.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                sideButtons.forEach(b => b.classList.remove('selected-side'));
+                e.target.classList.add('selected-side');
+                currentSide = e.target.dataset.side;
+            });
+        });
+        document.querySelector('[data-side="up"]').classList.add('selected-side');
+
+        document.getElementById('toggleAuxBtn').addEventListener('click', (e) => {
+            showAux = !showAux;
+            e.target.textContent = showAux ? '👁 隐藏辅助线' : '👁 显示辅助线';
+            drawGridCanvas();
+        });
+        document.getElementById('lineAlphaSlider').addEventListener('input', (e) => {
+            alpha = parseFloat(e.target.value);
+            drawGridCanvas();
+        });
+
+        function drawGridCanvas() {
+            ctxGrid.clearRect(0, 0, SIZE, SIZE);
+            ctxGrid.strokeStyle = '#2c3e4f';
+            ctxGrid.lineWidth = 3;
+            ctxGrid.strokeRect(PAD, PAD, INNER_SIZE, INNER_SIZE);
+            const px = PAD + gridPoint.x * INNER_SIZE;
+            const py = PAD + gridPoint.y * INNER_SIZE;
+            ctxGrid.beginPath();
+            ctxGrid.fillStyle = '#c44b3c';
+            ctxGrid.shadowColor = '#b33a2a';
+            ctxGrid.shadowBlur = 8;
+            ctxGrid.arc(px, py, 4, 0, 2 * Math.PI);
+            ctxGrid.fill();
+            ctxGrid.shadowBlur = 0;
+
+            if (showAux) {
+                ctxGrid.lineWidth = 2.5;
+                hLines.forEach(line => {
+                    ctxGrid.globalAlpha = alpha;
+                    ctxGrid.strokeStyle = getColorForFraction(line.frac);
+                    let y = PAD + line.y * INNER_SIZE;
+                    ctxGrid.beginPath();
+                    ctxGrid.moveTo(PAD, y);
+                    ctxGrid.lineTo(PAD + INNER_SIZE, y);
+                    ctxGrid.stroke();
+                });
+                vLines.forEach(line => {
+                    ctxGrid.globalAlpha = alpha;
+                    ctxGrid.strokeStyle = getColorForFraction(line.frac);
+                    let x = PAD + line.x * INNER_SIZE;
+                    ctxGrid.beginPath();
+                    ctxGrid.moveTo(x, PAD);
+                    ctxGrid.lineTo(x, PAD + INNER_SIZE);
+                    ctxGrid.stroke();
+                });
+                ctxGrid.globalAlpha = 1;
+            }
+            let hText = curH !== null ? curH.toFixed(2) : '--';
+            let vText = curV !== null ? curV.toFixed(2) : '--';
+            document.getElementById('spaceHint').innerText = `横线 y=${hText} | 纵线 x=${vText}`;
+        }
+
+        newGrid();
+
+        // ---------- 斜率模块 (左侧两点，右侧长线，步进按钮，无翻转) ----------
+        const slopeCanvas1 = document.getElementById('slopeCanvas1');
+        const slopeCanvas2 = document.getElementById('slopeCanvas2');
+        const ctxSlope1 = slopeCanvas1.getContext('2d');
+        const ctxSlope2 = slopeCanvas2.getContext('2d');
+        const S_PAD = 10;
+        const S_SIZE = 200;
+        const S_INNER = S_SIZE - 2 * S_PAD;
+
+        let leftPoints = { x1: 0, y1: 0, x2: 0, y2: 0 };
+        let leftAngle = 0;
+
+        let rightAngle = 0;
+
+        const defaultHint = '↝ 调整右侧长线角度';
+
+        function randomLeftSegment() {
+            let angle = Math.floor(Math.random() * 360);
+            let length = 60 + Math.random() * 60;
+            let centerX = S_PAD + S_INNER * (0.2 + Math.random() * 0.6);
+            let centerY = S_PAD + S_INNER * (0.2 + Math.random() * 0.6);
+            let dx = length/2 * Math.cos(angle * Math.PI/180);
+            let dy = length/2 * Math.sin(angle * Math.PI/180);
+            let x1 = centerX - dx;
+            let y1 = centerY - dy;
+            let x2 = centerX + dx;
+            let y2 = centerY + dy;
+            const min = S_PAD;
+            const max = S_PAD + S_INNER;
+            if (x1 < min || x1 > max || y1 < min || y1 > max || x2 < min || x2 > max || y2 < min || y2 > max) {
+                return randomLeftSegment();
+            }
+            leftPoints = { x1, y1, x2, y2 };
+            leftAngle = angle;
+        }
+
+        randomLeftSegment();
+
+        function updateAngleDisplay() {
+            let displayAngle = rightAngle;
+            if (displayAngle > 180) displayAngle -= 180;
+            document.getElementById('angleDisplay').innerText = displayAngle + '°';
+        }
+
+        function drawSlopeCanvases() {
+            // 左侧画两点
+            ctxSlope1.clearRect(0, 0, S_SIZE, S_SIZE);
+            ctxSlope1.strokeStyle = '#333';
+            ctxSlope1.lineWidth = 2;
+            ctxSlope1.strokeRect(S_PAD, S_PAD, S_INNER, S_INNER);
+            ctxSlope1.fillStyle = '#000';
+            ctxSlope1.shadowBlur = 0;
+            ctxSlope1.beginPath();
+            ctxSlope1.arc(leftPoints.x1, leftPoints.y1, 4, 0, 2*Math.PI);
+            ctxSlope1.fill();
+            ctxSlope1.beginPath();
+            ctxSlope1.arc(leftPoints.x2, leftPoints.y2, 4, 0, 2*Math.PI);
+            ctxSlope1.fill();
+
+            // 右侧画长线 (横跨画布)
+            ctxSlope2.clearRect(0, 0, S_SIZE, S_SIZE);
+            ctxSlope2.strokeStyle = '#333';
+            ctxSlope2.lineWidth = 2;
+            ctxSlope2.strokeRect(S_PAD, S_PAD, S_INNER, S_INNER);
+            let centerX = S_SIZE/2;
+            let centerY = S_SIZE/2;
+            ctxSlope2.save();
+            ctxSlope2.translate(centerX, centerY);
+            ctxSlope2.rotate(rightAngle * Math.PI/180);
+            ctxSlope2.beginPath();
+            ctxSlope2.strokeStyle = '#000';
+            ctxSlope2.lineWidth = 3;
+            // 画一条足够长的线 (从 -1000 到 1000)
+            ctxSlope2.moveTo(-76, 0);
+            ctxSlope2.lineTo(76, 0);
+            ctxSlope2.stroke();
+            ctxSlope2.restore();
+
+            updateAngleDisplay();
+        }
+
+        // 步进按钮
+        document.getElementById('angleStep1M').addEventListener('click', () => { rightAngle = (rightAngle - 1 + 360) % 360; drawSlopeCanvases(); resetHint(); });
+        document.getElementById('angleStep5M').addEventListener('click', () => { rightAngle = (rightAngle - 5 + 360) % 360; drawSlopeCanvases(); resetHint(); });
+        document.getElementById('angleStep10M').addEventListener('click', () => { rightAngle = (rightAngle - 10 + 360) % 360; drawSlopeCanvases(); resetHint(); });
+        document.getElementById('angleStep20M').addEventListener('click', () => { rightAngle = (rightAngle - 20 + 360) % 360; drawSlopeCanvases(); resetHint(); });
+        document.getElementById('angleStep1P').addEventListener('click', () => { rightAngle = (rightAngle + 1) % 360; drawSlopeCanvases(); resetHint(); });
+        document.getElementById('angleStep5P').addEventListener('click', () => { rightAngle = (rightAngle + 5) % 360; drawSlopeCanvases(); resetHint(); });
+        document.getElementById('angleStep10P').addEventListener('click', () => { rightAngle = (rightAngle + 10) % 360; drawSlopeCanvases(); resetHint(); });
+        document.getElementById('angleStep20P').addEventListener('click', () => { rightAngle = (rightAngle + 20) % 360; drawSlopeCanvases(); resetHint(); });
+
+        function resetHint() {
+            document.getElementById('angleHint').innerText = defaultHint;
+        }
+
+        document.getElementById('submitAngleBtn').addEventListener('click', () => {
+            const hintEl = document.getElementById('angleHint');
+            let diff = Math.abs(leftAngle - rightAngle) % 360;
+            if (diff === 0 || diff === 180) {
+                hintEl.innerText = '✓ 正确！';
+                randomLeftSegment();
+                rightAngle = 0;
+                drawSlopeCanvases();
+                setTimeout(() => {
+                    if (document.getElementById('slopePanel').classList.contains('active')) {
+                        resetHint();
+                    }
+                }, 1500);
+            } else {
+                hintEl.innerText = '✗ 错误';
+            }
+        });
+
+        document.getElementById('resetAngleBtn').addEventListener('click', () => {
+            randomLeftSegment();
+            rightAngle = 0;
+            drawSlopeCanvases();
+            resetHint();
+        });
+
+        // ---------- 线条比例模块 (固定比例1~5，线宽调细，提交后画校验线) ----------
+        const lengthCanvas1 = document.getElementById('lengthCanvas1');
+        const lengthCanvas2 = document.getElementById('lengthCanvas2');
+        const ctxLen1 = lengthCanvas1.getContext('2d');
+        const ctxLen2 = lengthCanvas2.getContext('2d');
+        let realRatio = 1.0;
+        let angleA = 0, angleB = 0;
+        let lastGuessValid = false; // 标记是否需要画校验线
+
+        // 固定比例范围 1~5
+        const MIN_RATIO = 1.0;
+        const MAX_RATIO = 5.0;
+
+        function newLengthPair() {
+            let raw = Math.random() * (MAX_RATIO - MIN_RATIO) + MIN_RATIO;
+            realRatio = Math.round(raw * 10) / 10;
+            if (realRatio < MIN_RATIO) realRatio = MIN_RATIO;
+            if (realRatio > MAX_RATIO) realRatio = MAX_RATIO;
+
+            if (document.getElementById('randomAngleCheck').checked) {
+                angleA = Math.floor(Math.random() * 360);
+                angleB = Math.floor(Math.random() * 360);
+            } else {
+                angleA = 0;
+                angleB = 0;
+            }
+            lastGuessValid = false; // 新线段时清除校验线
+            drawLengthCanvases(false);
+            document.getElementById('lengthHint').innerHTML = '🔍 输入比例后提交查看结果';
+        }
+
+        function drawLengthCanvases(showCheckLines = false) {
+            const maxLen = 140; // 最大长度 px
+            let lenA, lenB;
+            if (realRatio >= 1) {
+                lenB = maxLen;
+                lenA = maxLen / realRatio;
+            } else {
+                lenA = maxLen;
+                lenB = maxLen * realRatio;
+            }
+            if (lenA < 8) lenA = 8;
+            if (lenB < 8) lenB = 8;
+
+            // 清空画布并绘制边框
+            ctxLen1.clearRect(0, 0, 200, 200);
+            ctxLen2.clearRect(0, 0, 200, 200);
+            ctxLen1.strokeStyle = '#aaa';
+            ctxLen1.lineWidth = 1.5;
+            ctxLen1.strokeRect(10, 10, 180, 180);
+            ctxLen2.strokeStyle = '#aaa';
+            ctxLen2.lineWidth = 1.5;
+            ctxLen2.strokeRect(10, 10, 180, 180);
+
+            // 画线段 A
+            drawLengthLine(ctxLen1, 200, lenA, angleA, '#9B5A3A', false);
+            // 画线段 B
+            drawLengthLine(ctxLen2, 200, lenB, angleB, '#3A7B6B', false);
+
+            if (showCheckLines && lastGuessValid) {
+                // 在较长线段上画校验短线
+                if (lenA >= lenB) {
+                    // A 是较长线段，以 lenB 为间隔画垂直线
+                    drawCheckLines(ctxLen1, 200, lenA, angleA, lenB);
+                } else {
+                    // B 是较长线段，以 lenA 为间隔画垂直线
+                    drawCheckLines(ctxLen2, 200, lenB, angleB, lenA);
+                }
+            }
+        }
+
+        function drawLengthLine(ctx, size, lengthPx, angleDeg, color, showRedDot) {
+            ctx.save();
+            ctx.translate(size/2, size/2);
+            ctx.rotate(angleDeg * Math.PI/180);
+            ctx.beginPath();
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 4; // 调细线宽
+            ctx.lineCap = 'round';
+            ctx.moveTo(-lengthPx/2, 0);
+            ctx.lineTo(lengthPx/2, 0);
+            ctx.stroke();
+            ctx.restore();
+        }
+
+        function drawCheckLines(ctx, size, longLen, angleDeg, shortLen) {
+            ctx.save();
+            ctx.translate(size/2, size/2);
+            ctx.rotate(angleDeg * Math.PI/180);
+            ctx.strokeStyle = '#FF4444';
+            ctx.lineWidth = 2;
+            // 从起点 -longLen/2 开始，每隔 shortLen 画一条垂直线，直到超过终点
+            let start = -longLen/2;
+            let end = longLen/2;
+            for (let x = start + shortLen; x < end; x += shortLen) {
+                ctx.beginPath();
+                ctx.moveTo(x, -8);
+                ctx.lineTo(x, 8);
+                ctx.stroke();
+            }
+            ctx.restore();
+        }
+
+        document.getElementById('randomAngleCheck').addEventListener('change', newLengthPair);
+        document.getElementById('resetLengthBtn').addEventListener('click', ()=>{
+            newLengthPair();
+            document.getElementById('guessRatioInput').value = '';
+        });
+
+        document.getElementById('submitLengthBtn').addEventListener('click', ()=>{
+            const guess = parseFloat(document.getElementById('guessRatioInput').value);
+            const hintEl = document.getElementById('lengthHint');
+            if (isNaN(guess)) {
+                hintEl.innerHTML = '请输入有效数字';
+                return;
+            }
+            hintEl.innerHTML = `提交: ${guess.toFixed(1)}  真实: ${realRatio.toFixed(1)}`;
+            lastGuessValid = true;
+            drawLengthCanvases(true);
+        });
+
+        // 初始化
+        newLengthPair();
+        drawSlopeCanvases();
+
+        window.addEventListener('resize', ()=>{
+            if (panels.space.classList.contains('active')) drawGridCanvas();
+            if (panels.slope.classList.contains('active')) drawSlopeCanvases();
+            if (panels.length.classList.contains('active')) drawLengthCanvases(lastGuessValid);
+        });
+    })();
+</script>
+</body>
+</html>
