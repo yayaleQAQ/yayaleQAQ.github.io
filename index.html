@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes">
-    <title>练习</title>
+    <title>绘画眼力 · 三合一精进</title>
     <style>
         * {
             box-sizing: border-box;
@@ -295,7 +295,7 @@
 </head>
 <body>
 <div class="app-container">
-    <h1>练习</h1>
+    <h1>✧ 目测·三练 ✧</h1>
     <div class="sub">格子 / 斜率(点对点) / 线段(独立角度)</div>
 
     <!-- Tabs -->
@@ -305,7 +305,7 @@
         <button class="tab" data-tab="length">📏 线条比例</button>
     </div>
 
-    <!-- 空间比例面板 (两人移动，基于最近边界) -->
+    <!-- 空间比例面板 (随机大小格子，随机短线) -->
     <div id="spacePanel" class="panel active">
         <div class="canvas-area">
             <canvas id="gridCanvas" class="grid-canvas" width="400" height="400"></canvas>
@@ -334,8 +334,15 @@
             </div>
             <div class="btn-row" id="sideButtons">
                 <span style="font-weight:500;">方向:</span>
-                <button class="btn-sm" data-side="up">▲ 下/左</button>
-                <button class="btn-sm" data-side="down">▼ 上/右</button>
+                <button class="btn-sm" data-side="up">▲ 上/左</button>
+                <button class="btn-sm" data-side="down">▼ 下/右</button>
+            </div>
+            <div class="btn-row">
+                <span style="font-weight:500;">格子形状:</span>
+                <div class="toggle-group" id="shapeToggle">
+                    <button class="toggle-option selected" data-shape="square">正方形</button>
+                    <button class="toggle-option" data-shape="rectangle">长方形</button>
+                </div>
             </div>
             <div class="flex-between">
                 <span></span>
@@ -421,26 +428,44 @@
             });
         });
 
-        // ---------- 空间比例模块 (基于最近边界移动，带内边距) ----------
+        // ---------- 空间比例模块 (随机大小格子，随机短线) ----------
         const gridCanvas = document.getElementById('gridCanvas');
         const ctxGrid = gridCanvas.getContext('2d');
-        const PAD = 20;
         const SIZE = 400;
-        const INNER_SIZE = SIZE - 2 * PAD;
 
+        // 格子尺寸 (像素)
+        let gridWidth = 360, gridHeight = 360; // 默认正方形
+        let gridLeft = 20, gridTop = 20; // 左上角坐标
+
+        // 随机点 (归一化 0..1)
         let gridPoint = { x: 0.5, y: 0.5 };
 
+        // 存储所有横线 (y归一化) 和纵线 (x归一化)
         let hLines = []; // { y, frac }
         let vLines = []; // { x, frac }
         let curH = null;
         let curV = null;
         let history = [];
 
+        // 随机短线
+        let shortLines = []; // 每个元素 { x1, y1, x2, y2 } 实际像素坐标
+
         let showAux = true;
         let alpha = 0.7;
         let currentOrient = 'horizontal';
         let currentSide = 'up';
+        let currentShape = 'square'; // 'square' 或 'rectangle'
 
+        // 形状切换
+        document.querySelectorAll('[data-shape]').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                document.querySelectorAll('[data-shape]').forEach(b => b.classList.remove('selected'));
+                e.target.classList.add('selected');
+                currentShape = e.target.dataset.shape;
+            });
+        });
+
+        // 比例颜色
         function getColorForFraction(frac) {
             if (frac === 0.5) return '#FF6B6B';
             if (frac === 0.333) return '#4ECDC4';
@@ -450,8 +475,50 @@
             return '#888';
         }
 
+        // 随机点 (归一化)
         function randomPoint() {
             return { x: Math.random() * 0.8 + 0.1, y: Math.random() * 0.8 + 0.1 };
+        }
+
+        // 随机生成格子尺寸
+        function randomGridSize() {
+            const minSize = 200, maxSize = 380; // 避免太小或太大
+            if (currentShape === 'square') {
+                let size = Math.floor(Math.random() * (maxSize - minSize + 1)) + minSize;
+                gridWidth = gridHeight = size;
+            } else {
+                gridWidth = Math.floor(Math.random() * (maxSize - minSize + 1)) + minSize;
+                gridHeight = Math.floor(Math.random() * (maxSize - minSize + 1)) + minSize;
+            }
+            gridLeft = (SIZE - gridWidth) / 2;
+            gridTop = (SIZE - gridHeight) / 2;
+        }
+
+        // 随机生成短线
+        function generateShortLines() {
+            const count = Math.floor(Math.random() * 6) + 3; // 3~8条
+            shortLines = [];
+            for (let i = 0; i < count; i++) {
+                let attempts = 0;
+                while (attempts < 100) {
+                    // 随机起点在格子内
+                    let x1 = gridLeft + Math.random() * gridWidth;
+                    let y1 = gridTop + Math.random() * gridHeight;
+                    let angle = Math.random() * 2 * Math.PI;
+                    let length = 10 + Math.random() * 20; // 10~30px
+                    let dx = length * Math.cos(angle);
+                    let dy = length * Math.sin(angle);
+                    let x2 = x1 + dx;
+                    let y2 = y1 + dy;
+                    // 确保终点也在格子内
+                    if (x2 >= gridLeft && x2 <= gridLeft + gridWidth && y2 >= gridTop && y2 <= gridTop + gridHeight) {
+                        shortLines.push({ x1, y1, x2, y2 });
+                        break;
+                    }
+                    attempts++;
+                }
+                // 如果尝试100次仍失败，放弃这条线（不影响整体）
+            }
         }
 
         function newGrid() {
@@ -461,6 +528,8 @@
             curH = null;
             curV = null;
             history = [];
+            randomGridSize();
+            generateShortLines();
             drawGridCanvas();
         }
         document.getElementById('newGridBtn').addEventListener('click', newGrid);
@@ -569,11 +638,49 @@
 
         function drawGridCanvas() {
             ctxGrid.clearRect(0, 0, SIZE, SIZE);
+
+            // 画格子边框
             ctxGrid.strokeStyle = '#2c3e4f';
             ctxGrid.lineWidth = 3;
-            ctxGrid.strokeRect(PAD, PAD, INNER_SIZE, INNER_SIZE);
-            const px = PAD + gridPoint.x * INNER_SIZE;
-            const py = PAD + gridPoint.y * INNER_SIZE;
+            ctxGrid.strokeRect(gridLeft, gridTop, gridWidth, gridHeight);
+
+            // 画随机短线 (黑色细线)
+            ctxGrid.strokeStyle = '#000';
+            ctxGrid.lineWidth = 1;
+            shortLines.forEach(line => {
+                ctxGrid.beginPath();
+                ctxGrid.moveTo(line.x1, line.y1);
+                ctxGrid.lineTo(line.x2, line.y2);
+                ctxGrid.stroke();
+            });
+
+            // 画辅助线 (横线、纵线)
+            if (showAux) {
+                ctxGrid.lineWidth = 2.5;
+                hLines.forEach(line => {
+                    ctxGrid.globalAlpha = alpha;
+                    ctxGrid.strokeStyle = getColorForFraction(line.frac);
+                    let y = gridTop + line.y * gridHeight;
+                    ctxGrid.beginPath();
+                    ctxGrid.moveTo(gridLeft, y);
+                    ctxGrid.lineTo(gridLeft + gridWidth, y);
+                    ctxGrid.stroke();
+                });
+                vLines.forEach(line => {
+                    ctxGrid.globalAlpha = alpha;
+                    ctxGrid.strokeStyle = getColorForFraction(line.frac);
+                    let x = gridLeft + line.x * gridWidth;
+                    ctxGrid.beginPath();
+                    ctxGrid.moveTo(x, gridTop);
+                    ctxGrid.lineTo(x, gridTop + gridHeight);
+                    ctxGrid.stroke();
+                });
+                ctxGrid.globalAlpha = 1;
+            }
+
+            // 画点 (确保在顶层)
+            const px = gridLeft + gridPoint.x * gridWidth;
+            const py = gridTop + gridPoint.y * gridHeight;
             ctxGrid.beginPath();
             ctxGrid.fillStyle = '#c44b3c';
             ctxGrid.shadowColor = '#b33a2a';
@@ -582,33 +689,13 @@
             ctxGrid.fill();
             ctxGrid.shadowBlur = 0;
 
-            if (showAux) {
-                ctxGrid.lineWidth = 2.5;
-                hLines.forEach(line => {
-                    ctxGrid.globalAlpha = alpha;
-                    ctxGrid.strokeStyle = getColorForFraction(line.frac);
-                    let y = PAD + line.y * INNER_SIZE;
-                    ctxGrid.beginPath();
-                    ctxGrid.moveTo(PAD, y);
-                    ctxGrid.lineTo(PAD + INNER_SIZE, y);
-                    ctxGrid.stroke();
-                });
-                vLines.forEach(line => {
-                    ctxGrid.globalAlpha = alpha;
-                    ctxGrid.strokeStyle = getColorForFraction(line.frac);
-                    let x = PAD + line.x * INNER_SIZE;
-                    ctxGrid.beginPath();
-                    ctxGrid.moveTo(x, PAD);
-                    ctxGrid.lineTo(x, PAD + INNER_SIZE);
-                    ctxGrid.stroke();
-                });
-                ctxGrid.globalAlpha = 1;
-            }
+            // 更新提示
             let hText = curH !== null ? curH.toFixed(2) : '--';
             let vText = curV !== null ? curV.toFixed(2) : '--';
             document.getElementById('spaceHint').innerText = `横线 y=${hText} | 纵线 x=${vText}`;
         }
 
+        // 初始化
         newGrid();
 
         // ---------- 斜率模块 (左侧两点，右侧长线，步进按钮，无翻转) ----------
@@ -738,9 +825,8 @@
         const ctxLen2 = lengthCanvas2.getContext('2d');
         let realRatio = 1.0;
         let angleA = 0, angleB = 0;
-        let lastGuessValid = false; // 标记是否需要画校验线
+        let lastGuessValid = false;
 
-        // 固定比例范围 1~5
         const MIN_RATIO = 1.0;
         const MAX_RATIO = 5.0;
 
@@ -757,13 +843,13 @@
                 angleA = 0;
                 angleB = 0;
             }
-            lastGuessValid = false; // 新线段时清除校验线
+            lastGuessValid = false;
             drawLengthCanvases(false);
             document.getElementById('lengthHint').innerHTML = '🔍 输入比例后提交查看结果';
         }
 
         function drawLengthCanvases(showCheckLines = false) {
-            const maxLen = 140; // 最大长度 px
+            const maxLen = 140;
             let lenA, lenB;
             if (realRatio >= 1) {
                 lenB = maxLen;
@@ -775,7 +861,6 @@
             if (lenA < 8) lenA = 8;
             if (lenB < 8) lenB = 8;
 
-            // 清空画布并绘制边框
             ctxLen1.clearRect(0, 0, 200, 200);
             ctxLen2.clearRect(0, 0, 200, 200);
             ctxLen1.strokeStyle = '#aaa';
@@ -785,18 +870,13 @@
             ctxLen2.lineWidth = 1.5;
             ctxLen2.strokeRect(10, 10, 180, 180);
 
-            // 画线段 A
             drawLengthLine(ctxLen1, 200, lenA, angleA, '#9B5A3A', false);
-            // 画线段 B
             drawLengthLine(ctxLen2, 200, lenB, angleB, '#3A7B6B', false);
 
             if (showCheckLines && lastGuessValid) {
-                // 在较长线段上画校验短线
                 if (lenA >= lenB) {
-                    // A 是较长线段，以 lenB 为间隔画垂直线
                     drawCheckLines(ctxLen1, 200, lenA, angleA, lenB);
                 } else {
-                    // B 是较长线段，以 lenA 为间隔画垂直线
                     drawCheckLines(ctxLen2, 200, lenB, angleB, lenA);
                 }
             }
@@ -808,7 +888,7 @@
             ctx.rotate(angleDeg * Math.PI/180);
             ctx.beginPath();
             ctx.strokeStyle = color;
-            ctx.lineWidth = 4; // 调细线宽
+            ctx.lineWidth = 4;
             ctx.lineCap = 'round';
             ctx.moveTo(-lengthPx/2, 0);
             ctx.lineTo(lengthPx/2, 0);
@@ -822,7 +902,6 @@
             ctx.rotate(angleDeg * Math.PI/180);
             ctx.strokeStyle = '#FF4444';
             ctx.lineWidth = 2;
-            // 从起点 -longLen/2 开始，每隔 shortLen 画一条垂直线，直到超过终点
             let start = -longLen/2;
             let end = longLen/2;
             for (let x = start + shortLen; x < end; x += shortLen) {
