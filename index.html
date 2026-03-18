@@ -181,12 +181,32 @@
             font-weight: 600;
             padding: 8px 16px;
         }
-        /* 比例按钮背景色 */
-        .fraction-0-5 { background-color: #FF6B6B; color: white; border-color: #d44; }
-        .fraction-0-333 { background-color: #4ECDC4; color: white; border-color: #2a9; }
-        .fraction-0-25 { background-color: #FFD93D; color: #333; border-color: #ea0; }
-        .fraction-0-2 { background-color: #6A4E9B; color: white; border-color: #537; }
-        .fraction-0-1667 { background-color: #FF8C42; color: white; border-color: #e60; }
+        /* 比例按钮背景色 - 高饱和 */
+        .fraction-0-5 { background-color: #FF3B3B; color: white; border-color: #d00; }
+        .fraction-0-333 { background-color: #1E90FF; color: white; border-color: #1464b4; }
+        .fraction-0-25 { background-color: #FFD700; color: #333; border-color: #e6b800; }
+        .fraction-0-2 { background-color: #9B30FF; color: white; border-color: #7a1fa8; }
+        .fraction-0-1667 { background-color: #FF8C00; color: white; border-color: #cc7000; }
+
+        /* 图例条 */
+        .legend-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin: 10px 0;
+            justify-content: center;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 0.9rem;
+        }
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+        }
 
         input[type="range"] {
             flex: 1;
@@ -228,11 +248,6 @@
             align-items: center;
             flex-wrap: wrap;
             gap: 10px;
-        }
-        hr {
-            border: none;
-            border-top: 2px dashed #dacfc6;
-            margin: 20px 0 15px;
         }
         .toggle-group {
             display: flex;
@@ -287,7 +302,6 @@
             font-weight: 600;
             font-size: 1rem;
         }
-        /* 隐藏比例输入框 */
         .hidden {
             display: none !important;
         }
@@ -296,7 +310,7 @@
 <body>
 <div class="app-container">
     <h1>练习</h1>
-    <div class="sub">格子 / 斜率(点对点) / 线段(独立角度)</div>
+    <div class="sub">格子(随机大小) / 斜率(点对点) / 线段(独立角度)</div>
 
     <!-- Tabs -->
     <div class="tab-bar">
@@ -305,15 +319,25 @@
         <button class="tab" data-tab="length">📏 线条比例</button>
     </div>
 
-    <!-- 空间比例面板 (随机大小格子，随机短线) -->
+    <!-- 空间比例面板 (矩形格子，点有最优解，逐步演示) -->
     <div id="spacePanel" class="panel active">
         <div class="canvas-area">
             <canvas id="gridCanvas" class="grid-canvas" width="400" height="400"></canvas>
         </div>
         <div class="control-panel">
+            <div class="legend-row">
+                <div class="legend-item"><span class="legend-color" style="background:#FF3B3B;"></span> ½</div>
+                <div class="legend-item"><span class="legend-color" style="background:#1E90FF;"></span> ⅓</div>
+                <div class="legend-item"><span class="legend-color" style="background:#FFD700;"></span> ¼</div>
+                <div class="legend-item"><span class="legend-color" style="background:#9B30FF;"></span> ⅕</div>
+                <div class="legend-item"><span class="legend-color" style="background:#FF8C00;"></span> ⅙</div>
+            </div>
             <div class="btn-row">
                 <button class="btn" id="newGridBtn">✨ 新格子·点</button>
-                <button class="btn" id="undoAuxBtn">↩ 撤销一步</button>
+                <button class="btn" id="undoAuxBtn">↩ 撤销</button>
+                <button class="btn" id="optimalBtn">⭐ 最优解</button>
+                <button class="btn" id="nextStepBtn" style="display:none;">⏩ 下一步</button>
+                <button class="btn" id="showAllBtn" style="display:none;">⏩⏩ 直接显示</button>
                 <div class="inline-label">
                     <span>透明度</span>
                     <input type="range" id="lineAlphaSlider" min="0" max="1" step="0.05" value="0.7">
@@ -337,13 +361,6 @@
                 <button class="btn-sm" data-side="up">▼ 下/左</button>
                 <button class="btn-sm" data-side="down">▲ 上/右</button>
             </div>
-            <div class="btn-row">
-                <span style="font-weight:500;">格子形状:</span>
-                <div class="toggle-group" id="shapeToggle">
-                    <button class="toggle-option selected" data-shape="square">正方形</button>
-                    <button class="toggle-option" data-shape="rectangle">长方形</button>
-                </div>
-            </div>
             <div class="flex-between">
                 <span></span>
                 <span class="result-badge" id="spaceHint">横线: -- | 纵线: --</span>
@@ -351,11 +368,11 @@
         </div>
     </div>
 
-    <!-- 斜率面板 (左侧两点，右侧长线，步进按钮，无翻转) -->
+    <!-- 斜率面板 (左侧两点，右侧双向线段，两端留距) -->
     <div id="slopePanel" class="panel">
         <div class="canvas-area dual-canvas">
             <div class="canvas-wrapper"><canvas id="slopeCanvas1" width="200" height="200"></canvas><div class="canvas-label">两点连线 (目测斜率)</div></div>
-            <div class="canvas-wrapper"><canvas id="slopeCanvas2" width="200" height="200"></canvas><div class="canvas-label">调节长线</div></div>
+            <div class="canvas-wrapper"><canvas id="slopeCanvas2" width="200" height="200"></canvas><div class="canvas-label">调节线段</div></div>
         </div>
         <div class="control-panel">
             <div class="btn-row" style="justify-content:center; flex-wrap: wrap;">
@@ -375,7 +392,7 @@
                 <button class="btn" id="submitAngleBtn">✓ 提交比对</button>
                 <button class="btn" id="resetAngleBtn">↺ 重置斜率</button>
             </div>
-            <div class="result-badge" id="angleHint">↝ 调整右侧长线角度</div>
+            <div class="result-badge" id="angleHint">↝ 调整右侧线段角度</div>
         </div>
     </div>
 
@@ -416,9 +433,10 @@
                 const target = tab.dataset.tab;
                 Object.values(panels).forEach(p => p.classList.remove('active'));
                 panels[target].classList.add('active');
-                if (target === 'space') drawGridCanvas();
-                else if (target === 'slope') {
-                    document.getElementById('angleHint').innerText = '↝ 调整右侧长线角度';
+                if (target === 'space') {
+                    drawGridCanvas();
+                } else if (target === 'slope') {
+                    document.getElementById('angleHint').innerText = '↝ 调整右侧线段角度';
                     updateAngleDisplay();
                     drawSlopeCanvases();
                 } else if (target === 'length') {
@@ -428,112 +446,325 @@
             });
         });
 
-        // ---------- 空间比例模块 (随机大小格子，随机短线) ----------
+        // ---------- 空间比例模块 (矩形格子，点由最优解算法生成) ----------
         const gridCanvas = document.getElementById('gridCanvas');
         const ctxGrid = gridCanvas.getContext('2d');
         const SIZE = 400;
 
-        // 格子尺寸 (像素)
-        let gridWidth = 360, gridHeight = 360; // 默认正方形
-        let gridLeft = 20, gridTop = 20; // 左上角坐标
+        // 格子边界框 (像素)
+        let gridLeft = 20, gridTop = 20, gridRight = 380, gridBottom = 380;
+        let gridWidth = 360, gridHeight = 360;
 
-        // 随机点 (归一化 0..1)
+        // 点坐标 (归一化 0..1 相对于格子)
         let gridPoint = { x: 0.5, y: 0.5 };
 
-        // 存储所有横线 (y归一化) 和纵线 (x归一化)
+        // 当前辅助线
         let hLines = []; // { y, frac }
         let vLines = []; // { x, frac }
-        let curH = null;
-        let curV = null;
-        let history = [];
+        let curH = null; // 当前横线位置 (归一化)
+        let curV = null; // 当前纵线位置 (归一化)
+        let history = []; // 历史状态 { hLines, vLines, curH, curV, optIndex }
 
-        // 随机短线
-        let shortLines = []; // 每个元素 { x1, y1, x2, y2 } 实际像素坐标
+        // 干扰线
+        let shortLines = [];
+
+        // 最优解序列
+        let optimalSteps = []; // 每个元素 { type, side, frac, value }  type='h'或'v', value是最终位置(归一化)
+        let optimalIndex = 0; // 当前已演示到第几步 (0表示未开始)
 
         let showAux = true;
         let alpha = 0.7;
         let currentOrient = 'horizontal';
         let currentSide = 'up';
-        let currentShape = 'square'; // 'square' 或 'rectangle'
 
-        // 形状切换
-        document.querySelectorAll('[data-shape]').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                document.querySelectorAll('[data-shape]').forEach(b => b.classList.remove('selected'));
-                e.target.classList.add('selected');
-                currentShape = e.target.dataset.shape;
-            });
-        });
+        const fractions = [0.5, 0.333, 0.25, 0.2, 0.1667];
 
-        // 比例颜色
+        // 比例颜色 (高饱和)
         function getColorForFraction(frac) {
-            if (frac === 0.5) return '#FF6B6B';
-            if (frac === 0.333) return '#4ECDC4';
-            if (frac === 0.25) return '#FFD93D';
-            if (frac === 0.2) return '#6A4E9B';
-            if (frac === 0.1667) return '#FF8C42';
+            if (frac === 0.5) return '#FF3B3B';
+            if (frac === 0.333) return '#1E90FF';
+            if (frac === 0.25) return '#FFD700';
+            if (frac === 0.2) return '#9B30FF';
+            if (frac === 0.1667) return '#FF8C00';
             return '#888';
         }
 
-        // 随机点 (归一化)
-        function randomPoint() {
-            return { x: Math.random() * 0.8 + 0.1, y: Math.random() * 0.8 + 0.1 };
-        }
-
-        // 随机生成格子尺寸
+        // 随机生成格子大小
         function randomGridSize() {
-            const minSize = 200, maxSize = 380; // 避免太小或太大
-            if (currentShape === 'square') {
-                let size = Math.floor(Math.random() * (maxSize - minSize + 1)) + minSize;
-                gridWidth = gridHeight = size;
-            } else {
-                gridWidth = Math.floor(Math.random() * (maxSize - minSize + 1)) + minSize;
-                gridHeight = Math.floor(Math.random() * (maxSize - minSize + 1)) + minSize;
-            }
+            const minSize = 200, maxSize = 380;
+            gridWidth = Math.floor(Math.random() * (maxSize - minSize + 1)) + minSize;
+            gridHeight = Math.floor(Math.random() * (maxSize - minSize + 1)) + minSize;
             gridLeft = (SIZE - gridWidth) / 2;
             gridTop = (SIZE - gridHeight) / 2;
+            gridRight = gridLeft + gridWidth;
+            gridBottom = gridTop + gridHeight;
         }
 
-        // 随机生成短线
+        // 随机生成干扰线
         function generateShortLines() {
-            const count = Math.floor(Math.random() * 6) + 3; // 3~8条
+            const area = gridWidth * gridHeight;
+            let count = Math.floor(area / 1000);
+            count = Math.max(5, Math.min(20, count));
             shortLines = [];
             for (let i = 0; i < count; i++) {
-                let attempts = 0;
-                while (attempts < 100) {
-                    // 随机起点在格子内
-                    let x1 = gridLeft + Math.random() * gridWidth;
-                    let y1 = gridTop + Math.random() * gridHeight;
-                    let angle = Math.random() * 2 * Math.PI;
-                    let length = 10 + Math.random() * 20; // 10~30px
-                    let dx = length * Math.cos(angle);
-                    let dy = length * Math.sin(angle);
-                    let x2 = x1 + dx;
-                    let y2 = y1 + dy;
-                    // 确保终点也在格子内
-                    if (x2 >= gridLeft && x2 <= gridLeft + gridWidth && y2 >= gridTop && y2 <= gridTop + gridHeight) {
-                        shortLines.push({ x1, y1, x2, y2 });
-                        break;
-                    }
-                    attempts++;
+                let x1 = gridLeft + Math.random() * gridWidth;
+                let y1 = gridTop + Math.random() * gridHeight;
+                let angle = Math.random() * 2 * Math.PI;
+                let maxLen = Math.min(gridWidth, gridHeight) * 0.4;
+                let minLen = 30;
+                let length = minLen + Math.random() * (maxLen - minLen);
+                let dx = length * Math.cos(angle);
+                let dy = length * Math.sin(angle);
+                let x2 = x1 + dx;
+                let y2 = y1 + dy;
+                if (x2 < gridLeft || x2 > gridRight || y2 < gridTop || y2 > gridBottom) {
+                    x2 = x1 - dx;
+                    y2 = y1 - dy;
+                    if (x2 < gridLeft || x2 > gridRight || y2 < gridTop || y2 > gridBottom) continue;
                 }
-                // 如果尝试100次仍失败，放弃这条线（不影响整体）
+                let lineWidth = 2 + Math.floor(Math.random() * 3);
+                shortLines.push({ x1, y1, x2, y2, width: lineWidth });
             }
         }
 
+        // 检查一步是否能到达目标点 (且第一步禁用½)
+        function canReachInOneStep(tx, ty, forbidHalf = true) {
+            for (let side of ['up', 'down']) {
+                for (let frac of fractions) {
+                    if (forbidHalf && frac === 0.5) continue;
+                    // 横线一步
+                    let h = (side === 'up') ? 0 + 1 * frac : 1 - 1 * frac;
+                    for (let v0 of [0, 1]) {
+                        let dx = tx - v0;
+                        let dy = ty - h;
+                        if (Math.sqrt(dx*dx + dy*dy) < 0.1) return true;
+                    }
+                    // 纵线一步
+                    let v = (side === 'up') ? 1 - 1 * frac : 0 + 1 * frac;
+                    for (let h0 of [0, 1]) {
+                        let dx = tx - v;
+                        let dy = ty - h0;
+                        if (Math.sqrt(dx*dx + dy*dy) < 0.1) return true;
+                    }
+                }
+            }
+            return false;
+        }
+
+        // 检查新线与已有同向线的距离
+        function isGapEnough(newPos, existing, minGap) {
+            for (let p of existing) {
+                if (Math.abs(newPos - p) < minGap) return false;
+            }
+            return true;
+        }
+
+        // 随机生成点 (通过移动序列，保证步数最少，第一步禁用½，一步概率降低)
+        function generatePointWithSolution() {
+            const maxAttempts = 1000;
+            const distTol = 0.1;
+            const minGap = 0.15;
+            const oneStepProbability = 0.05; // 降低一步概率至5%
+
+            for (let attempt = 0; attempt < maxAttempts; attempt++) {
+                // 随机决定横线步数 (1-5) 和纵线步数 (1-5)
+                let hSteps, vSteps;
+                let isOneStep = false;
+                if (Math.random() < oneStepProbability) {
+                    hSteps = Math.floor(Math.random() * 5) + 1;
+                    vSteps = Math.floor(Math.random() * 5) + 1;
+                    if (hSteps === 1 && vSteps === 1) isOneStep = true;
+                } else {
+                    do {
+                        hSteps = Math.floor(Math.random() * 5) + 1;
+                        vSteps = Math.floor(Math.random() * 5) + 1;
+                    } while (hSteps === 1 && vSteps === 1);
+                }
+
+                // 随机决定顺序 (先横后纵 或 先纵后横)
+                let order = Math.random() > 0.5 ? 'hv' : 'vh';
+                let steps = [];
+                let hPositions = [];
+                let vPositions = [];
+                let h = null, v = null;
+                let valid = true;
+
+                // 生成横线步骤
+                for (let i = 0; i < hSteps; i++) {
+                    let side = Math.random() > 0.5 ? 'up' : 'down';
+                    let frac = fractions[Math.floor(Math.random() * fractions.length)];
+                    // 第一条横线禁用½
+                    if (i === 0 && frac === 0.5) {
+                        // 重新选择，直到不是0.5
+                        let attempts = 0;
+                        while (frac === 0.5 && attempts < 10) {
+                            frac = fractions[Math.floor(Math.random() * fractions.length)];
+                            attempts++;
+                        }
+                        if (frac === 0.5) frac = 0.333; // 保底
+                    }
+                    if (h === null) {
+                        if (side === 'up') h = 0 + 1 * frac;
+                        else h = 1 - 1 * frac;
+                    } else {
+                        if (side === 'up') {
+                            let candidates = hPositions.filter(y => y > h);
+                            candidates.push(1);
+                            let nearest = Math.min(...candidates);
+                            let distance = nearest - h;
+                            let move = distance * frac;
+                            h = h + move;
+                        } else {
+                            let candidates = hPositions.filter(y => y < h);
+                            candidates.push(0);
+                            let nearest = Math.max(...candidates);
+                            let distance = h - nearest;
+                            let move = distance * frac;
+                            h = h - move;
+                        }
+                    }
+                    if (!isGapEnough(h, hPositions, minGap)) { valid = false; break; }
+                    hPositions.push(h);
+                    steps.push({ type: 'h', side: side, frac: frac, value: h });
+                }
+                if (!valid) continue;
+
+                // 生成纵线步骤
+                for (let i = 0; i < vSteps; i++) {
+                    let side = Math.random() > 0.5 ? 'up' : 'down';
+                    let frac = fractions[Math.floor(Math.random() * fractions.length)];
+                    // 第一条纵线禁用½
+                    if (i === 0 && frac === 0.5) {
+                        let attempts = 0;
+                        while (frac === 0.5 && attempts < 10) {
+                            frac = fractions[Math.floor(Math.random() * fractions.length)];
+                            attempts++;
+                        }
+                        if (frac === 0.5) frac = 0.333;
+                    }
+                    if (v === null) {
+                        if (side === 'up') v = 1 - 1 * frac;
+                        else v = 0 + 1 * frac;
+                    } else {
+                        if (side === 'up') {
+                            let candidates = vPositions.filter(x => x < v);
+                            candidates.push(0);
+                            let nearest = Math.max(...candidates);
+                            let distance = v - nearest;
+                            let move = distance * frac;
+                            v = v - move;
+                        } else {
+                            let candidates = vPositions.filter(x => x > v);
+                            candidates.push(1);
+                            let nearest = Math.min(...candidates);
+                            let distance = nearest - v;
+                            let move = distance * frac;
+                            v = v + move;
+                        }
+                    }
+                    if (!isGapEnough(v, vPositions, minGap)) { valid = false; break; }
+                    vPositions.push(v);
+                    steps.push({ type: 'v', side: side, frac: frac, value: v });
+                }
+                if (!valid) continue;
+
+                // 检查交点与目标的距离
+                let dx = v - (gridPoint.x || 0.5);
+                let dy = h - (gridPoint.y || 0.5);
+                let dist = Math.sqrt(dx*dx + dy*dy);
+                if (dist <= distTol) {
+                    if (h < 0.1 || h > 0.9 || v < 0.1 || v > 0.9) continue;
+                    // 检查是否有更少步数的解（一步），且一步中禁用½
+                    if (canReachInOneStep(v, h, true)) continue;
+                    optimalSteps = steps;
+                    optimalIndex = 0;
+                    return { x: v, y: h };
+                }
+            }
+
+            // 回退生成（保证第一步不½）
+            let hSteps = Math.floor(Math.random() * 4) + 2; // 2-5
+            let vSteps = Math.floor(Math.random() * 4) + 2; // 2-5
+            let steps = [];
+            let hPositions = [], vPositions = [];
+            let h = null, v = null;
+            for (let i = 0; i < hSteps; i++) {
+                let side = Math.random() > 0.5 ? 'up' : 'down';
+                let frac = fractions[Math.floor(Math.random() * fractions.length)];
+                if (i === 0 && frac === 0.5) frac = 0.333;
+                if (h === null) {
+                    if (side === 'up') h = 0 + 1 * frac;
+                    else h = 1 - 1 * frac;
+                } else {
+                    if (side === 'up') {
+                        let candidates = hPositions.filter(y => y > h);
+                        candidates.push(1);
+                        let nearest = Math.min(...candidates);
+                        let distance = nearest - h;
+                        let move = distance * frac;
+                        h = h + move;
+                    } else {
+                        let candidates = hPositions.filter(y => y < h);
+                        candidates.push(0);
+                        let nearest = Math.max(...candidates);
+                        let distance = h - nearest;
+                        let move = distance * frac;
+                        h = h - move;
+                    }
+                }
+                hPositions.push(h);
+                steps.push({ type: 'h', side: side, frac: frac, value: h });
+            }
+            for (let i = 0; i < vSteps; i++) {
+                let side = Math.random() > 0.5 ? 'up' : 'down';
+                let frac = fractions[Math.floor(Math.random() * fractions.length)];
+                if (i === 0 && frac === 0.5) frac = 0.333;
+                if (v === null) {
+                    if (side === 'up') v = 1 - 1 * frac;
+                    else v = 0 + 1 * frac;
+                } else {
+                    if (side === 'up') {
+                        let candidates = vPositions.filter(x => x < v);
+                        candidates.push(0);
+                        let nearest = Math.max(...candidates);
+                        let distance = v - nearest;
+                        let move = distance * frac;
+                        v = v - move;
+                    } else {
+                        let candidates = vPositions.filter(x => x > v);
+                        candidates.push(1);
+                        let nearest = Math.min(...candidates);
+                        let distance = nearest - v;
+                        let move = distance * frac;
+                        v = v + move;
+                    }
+                }
+                vPositions.push(v);
+                steps.push({ type: 'v', side: side, frac: frac, value: v });
+            }
+            optimalSteps = steps;
+            optimalIndex = 0;
+            return { x: v, y: h };
+        }
+
+        // 重置新格子
         function newGrid() {
-            gridPoint = randomPoint();
+            randomGridSize();
+            generateShortLines();
+            let pt = generatePointWithSolution();
+            gridPoint = { x: pt.x, y: pt.y };
             hLines = [];
             vLines = [];
             curH = null;
             curV = null;
             history = [];
-            randomGridSize();
-            generateShortLines();
+            document.getElementById('nextStepBtn').style.display = 'none';
+            document.getElementById('showAllBtn').style.display = 'none';
             drawGridCanvas();
         }
         document.getElementById('newGridBtn').addEventListener('click', newGrid);
 
+        // 撤销
         document.getElementById('undoAuxBtn').addEventListener('click', () => {
             if (history.length === 0) return;
             let last = history.pop();
@@ -541,9 +772,99 @@
             vLines = last.vLines.map(l => ({ x: l.x, frac: l.frac }));
             curH = last.curH;
             curV = last.curV;
+            optimalIndex = last.optIndex;
+            drawGridCanvas();
+            if (optimalIndex < optimalSteps.length) {
+                document.getElementById('nextStepBtn').style.display = 'inline-block';
+                document.getElementById('showAllBtn').style.display = 'inline-block';
+            } else {
+                document.getElementById('nextStepBtn').style.display = 'none';
+                document.getElementById('showAllBtn').style.display = 'none';
+            }
+        });
+
+        // 显示最优解 (准备逐步演示)
+        document.getElementById('optimalBtn').addEventListener('click', () => {
+            if (optimalSteps.length === 0) return;
+            hLines = [];
+            vLines = [];
+            curH = null;
+            curV = null;
+            history = [];
+            optimalIndex = 0;
+            document.getElementById('nextStepBtn').style.display = 'inline-block';
+            document.getElementById('showAllBtn').style.display = 'inline-block';
             drawGridCanvas();
         });
 
+        // 下一步
+        document.getElementById('nextStepBtn').addEventListener('click', () => {
+            if (optimalIndex >= optimalSteps.length) {
+                document.getElementById('nextStepBtn').style.display = 'none';
+                document.getElementById('showAllBtn').style.display = 'none';
+                return;
+            }
+            let step = optimalSteps[optimalIndex];
+
+            history.push({
+                hLines: hLines.map(l => ({ y: l.y, frac: l.frac })),
+                vLines: vLines.map(l => ({ x: l.x, frac: l.frac })),
+                curH: curH,
+                curV: curV,
+                optIndex: optimalIndex
+            });
+
+            if (step.type === 'h') {
+                if (curH === null) {
+                    curH = step.value;
+                } else {
+                    curH = step.value;
+                }
+                hLines.push({ y: curH, frac: step.frac });
+            } else {
+                if (curV === null) {
+                    curV = step.value;
+                } else {
+                    curV = step.value;
+                }
+                vLines.push({ x: curV, frac: step.frac });
+            }
+
+            optimalIndex++;
+            drawGridCanvas();
+
+            if (optimalIndex >= optimalSteps.length) {
+                document.getElementById('nextStepBtn').style.display = 'none';
+                document.getElementById('showAllBtn').style.display = 'none';
+            }
+        });
+
+        // 直接显示所有
+        document.getElementById('showAllBtn').addEventListener('click', () => {
+            while (optimalIndex < optimalSteps.length) {
+                let step = optimalSteps[optimalIndex];
+                history.push({
+                    hLines: hLines.map(l => ({ y: l.y, frac: l.frac })),
+                    vLines: vLines.map(l => ({ x: l.x, frac: l.frac })),
+                    curH: curH,
+                    curV: curV,
+                    optIndex: optimalIndex
+                });
+                if (step.type === 'h') {
+                    curH = step.value;
+                    hLines.push({ y: curH, frac: step.frac });
+                } else {
+                    curV = step.value;
+                    vLines.push({ x: curV, frac: step.frac });
+                }
+                optimalIndex++;
+            }
+            drawGridCanvas();
+            document.getElementById('nextStepBtn').style.display = 'none';
+            document.getElementById('showAllBtn').style.display = 'none';
+        });
+
+        // 比例按钮点击
         document.querySelectorAll('[data-fraction]').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 const frac = parseFloat(e.target.dataset.fraction);
@@ -554,13 +875,14 @@
                     hLines: hLines.map(l => ({ y: l.y, frac: l.frac })),
                     vLines: vLines.map(l => ({ x: l.x, frac: l.frac })),
                     curH: curH,
-                    curV: curV
+                    curV: curV,
+                    optIndex: optimalIndex
                 });
 
                 if (type === 'horizontal') {
                     if (curH === null) {
-                        if (side === 'up') curH = 0 + 1 * frac; // 从下向上
-                        else curH = 1 - 1 * frac; // 从上向下
+                        if (side === 'up') curH = 0 + 1 * frac;
+                        else curH = 1 - 1 * frac;
                         hLines.push({ y: curH, frac: frac });
                     } else {
                         if (side === 'up') {
@@ -582,8 +904,8 @@
                     }
                 } else {
                     if (curV === null) {
-                        if (side === 'up') curV = 1 - 1 * frac; // 从右向左
-                        else curV = 0 + 1 * frac; // 从左向右
+                        if (side === 'up') curV = 1 - 1 * frac;
+                        else curV = 0 + 1 * frac;
                         vLines.push({ x: curV, frac: frac });
                     } else {
                         if (side === 'up') {
@@ -605,6 +927,8 @@
                     }
                 }
                 drawGridCanvas();
+                document.getElementById('nextStepBtn').style.display = 'none';
+                document.getElementById('showAllBtn').style.display = 'none';
             });
         });
 
@@ -639,31 +963,31 @@
         function drawGridCanvas() {
             ctxGrid.clearRect(0, 0, SIZE, SIZE);
 
-            // 画格子边框
+            // 画格子边框 (矩形)
             ctxGrid.strokeStyle = '#2c3e4f';
             ctxGrid.lineWidth = 3;
             ctxGrid.strokeRect(gridLeft, gridTop, gridWidth, gridHeight);
 
-            // 画随机短线 (黑色细线)
-            ctxGrid.strokeStyle = '#000';
-            ctxGrid.lineWidth = 1;
+            // 画干扰线
             shortLines.forEach(line => {
+                ctxGrid.strokeStyle = 'rgba(100,100,100,0.4)';
+                ctxGrid.lineWidth = line.width;
                 ctxGrid.beginPath();
                 ctxGrid.moveTo(line.x1, line.y1);
                 ctxGrid.lineTo(line.x2, line.y2);
                 ctxGrid.stroke();
             });
 
-            // 画辅助线 (横线、纵线)
+            // 画辅助线 (线宽3)
             if (showAux) {
-                ctxGrid.lineWidth = 2.5;
+                ctxGrid.lineWidth = 3;
                 hLines.forEach(line => {
                     ctxGrid.globalAlpha = alpha;
                     ctxGrid.strokeStyle = getColorForFraction(line.frac);
                     let y = gridTop + line.y * gridHeight;
                     ctxGrid.beginPath();
                     ctxGrid.moveTo(gridLeft, y);
-                    ctxGrid.lineTo(gridLeft + gridWidth, y);
+                    ctxGrid.lineTo(gridRight, y);
                     ctxGrid.stroke();
                 });
                 vLines.forEach(line => {
@@ -672,20 +996,20 @@
                     let x = gridLeft + line.x * gridWidth;
                     ctxGrid.beginPath();
                     ctxGrid.moveTo(x, gridTop);
-                    ctxGrid.lineTo(x, gridTop + gridHeight);
+                    ctxGrid.lineTo(x, gridBottom);
                     ctxGrid.stroke();
                 });
                 ctxGrid.globalAlpha = 1;
             }
 
-            // 画点 (确保在顶层)
+            // 画点 (半径3)
             const px = gridLeft + gridPoint.x * gridWidth;
             const py = gridTop + gridPoint.y * gridHeight;
             ctxGrid.beginPath();
             ctxGrid.fillStyle = '#c44b3c';
             ctxGrid.shadowColor = '#b33a2a';
             ctxGrid.shadowBlur = 8;
-            ctxGrid.arc(px, py, 4, 0, 2 * Math.PI);
+            ctxGrid.arc(px, py, 3, 0, 2 * Math.PI);
             ctxGrid.fill();
             ctxGrid.shadowBlur = 0;
 
@@ -698,7 +1022,7 @@
         // 初始化
         newGrid();
 
-        // ---------- 斜率模块 (左侧两点，右侧长线，步进按钮，无翻转) ----------
+        // ---------- 斜率模块 (两点缩小，双向线段，两端留距) ----------
         const slopeCanvas1 = document.getElementById('slopeCanvas1');
         const slopeCanvas2 = document.getElementById('slopeCanvas2');
         const ctxSlope1 = slopeCanvas1.getContext('2d');
@@ -712,7 +1036,7 @@
 
         let rightAngle = 0;
 
-        const defaultHint = '↝ 调整右侧长线角度';
+        const defaultHint = '↝ 调整右侧线段角度';
 
         function randomLeftSegment() {
             let angle = Math.floor(Math.random() * 360);
@@ -743,7 +1067,7 @@
         }
 
         function drawSlopeCanvases() {
-            // 左侧画两点
+            // 左侧画两点 (半径2.5)
             ctxSlope1.clearRect(0, 0, S_SIZE, S_SIZE);
             ctxSlope1.strokeStyle = '#333';
             ctxSlope1.lineWidth = 2;
@@ -751,35 +1075,67 @@
             ctxSlope1.fillStyle = '#000';
             ctxSlope1.shadowBlur = 0;
             ctxSlope1.beginPath();
-            ctxSlope1.arc(leftPoints.x1, leftPoints.y1, 4, 0, 2*Math.PI);
+            ctxSlope1.arc(leftPoints.x1, leftPoints.y1, 2.5, 0, 2*Math.PI);
             ctxSlope1.fill();
             ctxSlope1.beginPath();
-            ctxSlope1.arc(leftPoints.x2, leftPoints.y2, 4, 0, 2*Math.PI);
+            ctxSlope1.arc(leftPoints.x2, leftPoints.y2, 2.5, 0, 2*Math.PI);
             ctxSlope1.fill();
 
-            // 右侧画长线 (横跨画布)
+            // 右侧画双向线段，两端距离内边框10像素
             ctxSlope2.clearRect(0, 0, S_SIZE, S_SIZE);
             ctxSlope2.strokeStyle = '#333';
             ctxSlope2.lineWidth = 2;
             ctxSlope2.strokeRect(S_PAD, S_PAD, S_INNER, S_INNER);
             let centerX = S_SIZE/2;
             let centerY = S_SIZE/2;
-            ctxSlope2.save();
-            ctxSlope2.translate(centerX, centerY);
-            ctxSlope2.rotate(rightAngle * Math.PI/180);
-            ctxSlope2.beginPath();
-            ctxSlope2.strokeStyle = '#000';
-            ctxSlope2.lineWidth = 3;
-            // 画一条足够长的线 (从 -1000 到 1000)
-            ctxSlope2.moveTo(-76, 0);
-            ctxSlope2.lineTo(76, 0);
-            ctxSlope2.stroke();
-            ctxSlope2.restore();
+
+            let rad = rightAngle * Math.PI/180;
+            let innerLeft = S_PAD + 10;
+            let innerRight = S_PAD + S_INNER - 10;
+            let innerTop = S_PAD + 10;
+            let innerBottom = S_PAD + S_INNER - 10;
+
+            let intersections = [];
+            // 左边界 x = innerLeft
+            if (Math.cos(rad) !== 0) {
+                let t = (innerLeft - centerX) / Math.cos(rad);
+                let y = centerY + t * Math.sin(rad);
+                if (y >= innerTop && y <= innerBottom) intersections.push({ x: innerLeft, y, t });
+            }
+            // 右边界 x = innerRight
+            if (Math.cos(rad) !== 0) {
+                let t = (innerRight - centerX) / Math.cos(rad);
+                let y = centerY + t * Math.sin(rad);
+                if (y >= innerTop && y <= innerBottom) intersections.push({ x: innerRight, y, t });
+            }
+            // 上边界 y = innerTop
+            if (Math.sin(rad) !== 0) {
+                let t = (innerTop - centerY) / Math.sin(rad);
+                let x = centerX + t * Math.cos(rad);
+                if (x >= innerLeft && x <= innerRight) intersections.push({ x, y: innerTop, t });
+            }
+            // 下边界 y = innerBottom
+            if (Math.sin(rad) !== 0) {
+                let t = (innerBottom - centerY) / Math.sin(rad);
+                let x = centerX + t * Math.cos(rad);
+                if (x >= innerLeft && x <= innerRight) intersections.push({ x, y: innerBottom, t });
+            }
+
+            if (intersections.length >= 2) {
+                intersections.sort((a,b) => a.t - b.t);
+                let start = intersections[0];
+                let end = intersections[intersections.length-1];
+                ctxSlope2.beginPath();
+                ctxSlope2.strokeStyle = '#000';
+                ctxSlope2.lineWidth = 3;
+                ctxSlope2.moveTo(start.x, start.y);
+                ctxSlope2.lineTo(end.x, end.y);
+                ctxSlope2.stroke();
+            }
 
             updateAngleDisplay();
         }
 
-        // 步进按钮
         document.getElementById('angleStep1M').addEventListener('click', () => { rightAngle = (rightAngle - 1 + 360) % 360; drawSlopeCanvases(); resetHint(); });
         document.getElementById('angleStep5M').addEventListener('click', () => { rightAngle = (rightAngle - 5 + 360) % 360; drawSlopeCanvases(); resetHint(); });
         document.getElementById('angleStep10M').addEventListener('click', () => { rightAngle = (rightAngle - 10 + 360) % 360; drawSlopeCanvases(); resetHint(); });
