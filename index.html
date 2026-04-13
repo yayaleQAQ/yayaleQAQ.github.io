@@ -270,7 +270,7 @@
         </div>
     </div>
 
-    <!-- 斜率匹配面板（手动画线 + 按钮调节） -->
+    <!-- 斜率匹配面板（手动画线 + 按钮调节，修复手机触摸） -->
     <div id="slopePanel" class="panel">
         <div class="canvas-area">
             <div class="canvas-wrapper"><canvas id="curveCanvas" class="curve-canvas" width="250" height="250"></canvas><div class="canvas-label">曲线两点 (目测斜率)</div></div>
@@ -356,7 +356,7 @@
         let gridLeft = 20, gridTop = 20, gridRight = 380, gridBottom = 380;
         let gridWidth = 360, gridHeight = 360;
         let gridPoint = { x: 0.5, y: 0.5 };  // 目标红点
-        let userMarks = [];                  // 用户标记点数组 { x, y }
+        let userMarks = [];                  // 用户标记点数组
         let hLines = [];
         let vLines = [];
         let curH = null;
@@ -609,7 +609,7 @@
             ctxGrid.shadowBlur = 8;
             ctxGrid.arc(px, py, 2, 0, 2 * Math.PI);
             ctxGrid.fill();
-            // 用户标记点 (蓝色)
+            // 用户标记点
             userMarks.forEach(mark => {
                 const mx = gridLeft + mark.x * gridWidth;
                 const my = gridTop + mark.y * gridHeight;
@@ -628,7 +628,7 @@
 
         newGrid();
 
-        // ---------- 斜率模块（手动画线 + 按钮）----------
+        // ---------- 斜率模块（手动画线 + 按钮，修复手机触摸）----------
         const curveCanvas = document.getElementById('curveCanvas');
         const angleCanvas = document.getElementById('angleCanvas');
         const ctxCurve = curveCanvas.getContext('2d');
@@ -643,7 +643,7 @@
         // 手动画线状态
         let drawing = false;
         let startPoint = null;
-        let tempLine = null; // { x1, y1, x2, y2 }
+        let tempLine = null;
 
         function catmullRom(p0, p1, p2, p3, t) {
             let t2 = t*t, t3 = t2*t;
@@ -739,7 +739,6 @@
             let dx = p2.x - p1.x, dy = p2.y - p1.y;
             if (dx === 0 && dy === 0) return { start: p1, end: p2 };
             let tMin = -Infinity, tMax = Infinity;
-            // x 边界
             if (dx !== 0) {
                 let t1 = (left - p1.x) / dx;
                 let t2 = (right - p1.x) / dx;
@@ -749,7 +748,6 @@
             } else {
                 if (p1.x < left || p1.x > right) return { start: p1, end: p2 };
             }
-            // y 边界
             if (dy !== 0) {
                 let t1 = (top - p1.y) / dy;
                 let t2 = (bottom - p1.y) / dy;
@@ -765,11 +763,7 @@
             return { start, end };
         }
 
-        // 更新右侧角度并重绘
         function setRightAngleFromLine(p1, p2) {
-            let angle = getAngleMod180(p1, p2);
-            // 注意 getAngleMod180 返回0-179，但我们需要的是0-360? 右侧角度存储0-360，显示模180
-            // 为了后续比对，我们存储原始角度（0-360）
             let rawAngle = Math.atan2(p2.y - p1.y, p2.x - p1.x) * 180 / Math.PI;
             if (rawAngle < 0) rawAngle += 360;
             rightAngle = rawAngle;
@@ -806,7 +800,6 @@
                 ctxAngle.lineTo(inters[inters.length-1].x, inters[inters.length-1].y);
                 ctxAngle.stroke();
             }
-            // 如果有临时线条，绘制虚线
             if (tempLine) {
                 ctxAngle.beginPath();
                 ctxAngle.setLineDash([6, 8]);
@@ -832,16 +825,20 @@
 
         function resetHint() { document.getElementById('angleHint').innerText = defaultHint; }
 
-        // 手动画线事件
+        // ---------- 手动画线事件（修复手机触摸）----------
         function getCanvasCoords(e) {
             const rect = angleCanvas.getBoundingClientRect();
             const scaleX = angleCanvas.width / rect.width;
             const scaleY = angleCanvas.height / rect.height;
             let clientX, clientY;
             if (e.touches) {
+                // 触摸移动或开始
                 clientX = e.touches[0].clientX;
                 clientY = e.touches[0].clientY;
-                e.preventDefault();
+            } else if (e.changedTouches) {
+                // 触摸结束使用 changedTouches
+                clientX = e.changedTouches[0].clientX;
+                clientY = e.changedTouches[0].clientY;
             } else {
                 clientX = e.clientX;
                 clientY = e.clientY;
@@ -861,6 +858,7 @@
             tempLine = { x1: x, y1: y, x2: x, y2: y };
             drawAngleCanvas();
         }
+
         function onPointerMove(e) {
             if (!drawing) return;
             e.preventDefault();
@@ -868,12 +866,12 @@
             tempLine = { x1: startPoint.x, y1: startPoint.y, x2: x, y2: y };
             drawAngleCanvas();
         }
+
         function onPointerEnd(e) {
             if (!drawing) return;
             e.preventDefault();
             let { x, y } = getCanvasCoords(e);
             let p1 = startPoint, p2 = { x, y };
-            // 修正为直线并延伸到边界
             let stretched = getStretchedLine(p1, p2, ANGLE_PAD + 6);
             setRightAngleFromLine(stretched.start, stretched.end);
             tempLine = null;
@@ -883,12 +881,14 @@
             resetHint();
         }
 
+        // 注册事件（同时支持鼠标和触摸）
         angleCanvas.addEventListener('mousedown', onPointerStart);
         window.addEventListener('mousemove', onPointerMove);
         window.addEventListener('mouseup', onPointerEnd);
         angleCanvas.addEventListener('touchstart', onPointerStart);
-        window.addEventListener('touchmove', onPointerMove);
+        window.addEventListener('touchmove', onPointerMove, { passive: false });
         window.addEventListener('touchend', onPointerEnd);
+        window.addEventListener('touchcancel', onPointerEnd); // 确保取消时也结束
 
         // 按钮事件
         document.getElementById('angleStep1M').addEventListener('click', () => { rightAngle = (rightAngle - 1 + 360) % 360; drawAngleCanvas(); resetHint(); });
