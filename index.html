@@ -94,6 +94,7 @@
             width: 100%;
             height: auto;
             border: 2px solid #fff5eb;
+            cursor: crosshair;
         }
         canvas.grid-canvas {
             max-width: 400px;
@@ -139,11 +140,6 @@
             padding: 5px 12px;
             font-size: 0.8rem;
         }
-        .btn-active {
-            background: #d1c3b6;
-            border-color: #a48e7c;
-            color: #1e1612;
-        }
         .inline-label {
             display: flex;
             align-items: center;
@@ -160,13 +156,6 @@
             font-weight: 480;
             font-size: 0.9rem;
             text-align: center;
-        }
-        .flex-between {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 8px;
         }
         .toggle-group {
             display: flex;
@@ -248,7 +237,7 @@
         <button class="tab" data-tab="color">🎨 色感训练</button>
     </div>
 
-    <!-- 空间比例面板（简化版，仅1/2比例，无最优解） -->
+    <!-- 空间比例面板（多标记点） -->
     <div id="spacePanel" class="panel active">
         <div class="canvas-area">
             <canvas id="gridCanvas" class="grid-canvas" width="400" height="400"></canvas>
@@ -257,6 +246,7 @@
             <div class="btn-row">
                 <button class="btn" id="newGridBtn">✨ 新格子·点</button>
                 <button class="btn" id="undoAuxBtn">↩ 撤销</button>
+                <button class="btn" id="clearMarkBtn">🗑 清除所有标记</button>
                 <div class="inline-label">
                     <span>透明度</span>
                     <input type="range" id="lineAlphaSlider" min="0" max="1" step="0.05" value="0.7">
@@ -269,22 +259,24 @@
                     <button class="toggle-option" data-orient="vertical">⬍ 纵线</button>
                 </div>
                 <div class="toggle-group" id="sideButtons">
-                    <button class="toggle-option selected" data-side="up">▲ 上/左</button>
-                    <button class="toggle-option" data-side="down">▼ 下/右</button>
+                    <button class="toggle-option selected" data-side="up">▼ 下/左</button>
+                    <button class="toggle-option" data-side="down">▲ 上/右</button>
                 </div>
                 <button class="btn" id="addLineBtn">➕ 添加 ½ 辅助线</button>
+            </div>
+            <div class="result-badge" style="background: #e0d5ca; font-size:0.8rem;">
+                💡 点击格子添加蓝色标记点（可多个，用于核对比例）
             </div>
         </div>
     </div>
 
-    <!-- 斜率匹配面板（按钮分组稳定） -->
+    <!-- 斜率匹配面板（手动画线 + 按钮调节） -->
     <div id="slopePanel" class="panel">
         <div class="canvas-area">
             <div class="canvas-wrapper"><canvas id="curveCanvas" class="curve-canvas" width="250" height="250"></canvas><div class="canvas-label">曲线两点 (目测斜率)</div></div>
-            <div class="canvas-wrapper"><canvas id="angleCanvas" class="angle-canvas" width="150" height="150"></canvas><div class="canvas-label">调节线段</div></div>
+            <div class="canvas-wrapper"><canvas id="angleCanvas" class="angle-canvas" width="150" height="150"></canvas><div class="canvas-label">调节线段 (可手动画线)</div></div>
         </div>
         <div class="control-panel">
-            <!-- 负角度按钮行 -->
             <div class="btn-row">
                 <div class="step-group">
                     <button class="step-btn" id="angleStep1M">−1°</button>
@@ -293,7 +285,6 @@
                     <button class="step-btn" id="angleStep20M">−20°</button>
                 </div>
             </div>
-            <!-- 正角度按钮行 -->
             <div class="btn-row">
                 <div class="step-group">
                     <button class="step-btn" id="angleStep1P">+1°</button>
@@ -302,13 +293,12 @@
                     <button class="step-btn" id="angleStep20P">+20°</button>
                 </div>
             </div>
-            <!-- 状态和操作行 -->
             <div class="btn-row" style="justify-content: center; gap: 10px;">
                 <span class="angle-display" id="angleDisplay">0°</span>
                 <button class="btn" id="submitAngleBtn">✓ 提交</button>
                 <button class="btn" id="resetCurveBtn">↺ 新曲线</button>
             </div>
-            <div class="result-badge" id="angleHint">↝ 调整右侧线段角度</div>
+            <div class="result-badge" id="angleHint">↝ 可手动画线或使用按钮调节</div>
         </div>
     </div>
 
@@ -343,7 +333,7 @@
                 panels[target].classList.add('active');
                 if (target === 'space') drawGridCanvas();
                 else if (target === 'slope') {
-                    document.getElementById('angleHint').innerText = '↝ 调整右侧线段角度';
+                    document.getElementById('angleHint').innerText = '↝ 可手动画线或使用按钮调节';
                     updateAngleDisplay();
                     drawCurveAndPoints();
                     drawAngleCanvas();
@@ -359,30 +349,27 @@
             });
         }
 
-        // ---------- 空间比例模块（简化版）----------
+        // ---------- 空间比例模块（支持多个标记点）----------
         const gridCanvas = document.getElementById('gridCanvas');
         const ctxGrid = gridCanvas.getContext('2d');
         const SIZE = 400;
         let gridLeft = 20, gridTop = 20, gridRight = 380, gridBottom = 380;
         let gridWidth = 360, gridHeight = 360;
-        let gridPoint = { x: 0.5, y: 0.5 };  // 归一化坐标
-        let hLines = [];    // 横线位置 (归一化 y)
-        let vLines = [];    // 纵线位置 (归一化 x)
-        let curH = null;    // 当前最新横线位置
-        let curV = null;    // 当前最新纵线位置
-        let history = [];    // 历史状态 { hLines, vLines, curH, curV }
-        let shortLines = []; // 干扰线
+        let gridPoint = { x: 0.5, y: 0.5 };  // 目标红点
+        let userMarks = [];                  // 用户标记点数组 { x, y }
+        let hLines = [];
+        let vLines = [];
+        let curH = null;
+        let curV = null;
+        let history = [];
+        let shortLines = [];
         let showAux = true;
         let alpha = 0.7;
-        let currentOrient = 'horizontal'; // 'horizontal' 或 'vertical'
+        let currentOrient = 'horizontal';
         let currentSide = 'up';
 
-        // 颜色 (固定1/2)
-        function getLineColor() {
-            return '#FF3B3B'; // 红色
-        }
+        function getLineColor() { return '#FF3B3B'; }
 
-        // 随机格子大小 (200~400，更大)
         function randomGridSize() {
             const minSize = 220, maxSize = 400;
             gridWidth = Math.floor(Math.random() * (maxSize - minSize + 1)) + minSize;
@@ -393,10 +380,9 @@
             gridBottom = gridTop + gridHeight;
         }
 
-        // 随机生成干扰线（数量增加）
         function generateShortLines() {
             const area = gridWidth * gridHeight;
-            let count = Math.floor(area / 600);  // 密度更高
+            let count = Math.floor(area / 600);
             count = Math.max(12, Math.min(35, count));
             shortLines = [];
             for (let i = 0; i < count; i++) {
@@ -417,16 +403,15 @@
             }
         }
 
-        // 随机生成点 (归一化，避免边缘)
         function randomPoint() {
             return { x: 0.1 + Math.random() * 0.8, y: 0.1 + Math.random() * 0.8 };
         }
 
-        // 重置整个格子
         function newGrid() {
             randomGridSize();
             generateShortLines();
             gridPoint = randomPoint();
+            userMarks = [];
             hLines = [];
             vLines = [];
             curH = null;
@@ -436,7 +421,6 @@
         }
         document.getElementById('newGridBtn').addEventListener('click', newGrid);
 
-        // 撤销
         document.getElementById('undoAuxBtn').addEventListener('click', () => {
             if (history.length === 0) return;
             let last = history.pop();
@@ -444,30 +428,31 @@
             vLines = [...last.vLines];
             curH = last.curH;
             curV = last.curV;
+            userMarks = last.userMarks.map(p => ({ ...p }));
             drawGridCanvas();
         });
 
-        // 添加辅助线 (固定 1/2)
+        document.getElementById('clearMarkBtn').addEventListener('click', () => {
+            userMarks = [];
+            drawGridCanvas();
+        });
+
         function addAuxLine() {
             let type = currentOrient;
             let side = currentSide;
-
             history.push({
                 hLines: [...hLines],
                 vLines: [...vLines],
                 curH: curH,
-                curV: curV
+                curV: curV,
+                userMarks: userMarks.map(p => ({ ...p }))
             });
-
             if (type === 'horizontal') {
                 if (curH === null) {
-                    // 第一次横线
-                    if (side === 'up') curH = 0 + 1 * 0.5;   // 从下往上走一半
-                    else curH = 1 - 1 * 0.5;               // 从上往下走一半
+                    if (side === 'up') curH = 0 + 1 * 0.5;
+                    else curH = 1 - 1 * 0.5;
                 } else {
-                    // 已有横线，基于当前区间
                     if (side === 'up') {
-                        // 向上: 找上方最近线或上边界
                         let candidates = hLines.filter(y => y > curH);
                         candidates.push(1);
                         let nearest = Math.min(...candidates);
@@ -475,7 +460,6 @@
                         let move = distance * 0.5;
                         curH = curH + move;
                     } else {
-                        // 向下
                         let candidates = hLines.filter(y => y < curH);
                         candidates.push(0);
                         let nearest = Math.max(...candidates);
@@ -487,11 +471,10 @@
                 hLines.push(curH);
             } else {
                 if (curV === null) {
-                    if (side === 'up') curV = 1 - 1 * 0.5;   // 从右向左
-                    else curV = 0 + 1 * 0.5;               // 从左向右
+                    if (side === 'up') curV = 1 - 1 * 0.5;
+                    else curV = 0 + 1 * 0.5;
                 } else {
                     if (side === 'up') {
-                        // 向左
                         let candidates = vLines.filter(x => x < curV);
                         candidates.push(0);
                         let nearest = Math.max(...candidates);
@@ -499,7 +482,6 @@
                         let move = distance * 0.5;
                         curV = curV - move;
                     } else {
-                        // 向右
                         let candidates = vLines.filter(x => x > curV);
                         candidates.push(1);
                         let nearest = Math.min(...candidates);
@@ -514,7 +496,6 @@
         }
         document.getElementById('addLineBtn').addEventListener('click', addAuxLine);
 
-        // 方向切换
         document.querySelectorAll('[data-orient]').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 document.querySelectorAll('[data-orient]').forEach(b => b.classList.remove('selected'));
@@ -540,13 +521,55 @@
             drawGridCanvas();
         });
 
+        function addMark(nx, ny) {
+            if (nx >= 0 && nx <= 1 && ny >= 0 && ny <= 1) {
+                userMarks.push({ x: nx, y: ny });
+                drawGridCanvas();
+            }
+        }
+
+        function handleCanvasClick(e) {
+            const rect = gridCanvas.getBoundingClientRect();
+            const scaleX = gridCanvas.width / rect.width;
+            const scaleY = gridCanvas.height / rect.height;
+            let clientX, clientY;
+            if (e.touches) {
+                clientX = e.touches[0].clientX;
+                clientY = e.touches[0].clientY;
+                e.preventDefault();
+            } else {
+                clientX = e.clientX;
+                clientY = e.clientY;
+            }
+            let canvasX = (clientX - rect.left) * scaleX;
+            let canvasY = (clientY - rect.top) * scaleY;
+            canvasX = Math.min(Math.max(canvasX, 0), SIZE);
+            canvasY = Math.min(Math.max(canvasY, 0), SIZE);
+            let nx = (canvasX - gridLeft) / gridWidth;
+            let ny = (canvasY - gridTop) / gridHeight;
+            addMark(nx, ny);
+        }
+        gridCanvas.addEventListener('click', handleCanvasClick);
+        gridCanvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            const rect = gridCanvas.getBoundingClientRect();
+            const touch = e.touches[0];
+            const scaleX = gridCanvas.width / rect.width;
+            const scaleY = gridCanvas.height / rect.height;
+            let canvasX = (touch.clientX - rect.left) * scaleX;
+            let canvasY = (touch.clientY - rect.top) * scaleY;
+            canvasX = Math.min(Math.max(canvasX, 0), SIZE);
+            canvasY = Math.min(Math.max(canvasY, 0), SIZE);
+            let nx = (canvasX - gridLeft) / gridWidth;
+            let ny = (canvasY - gridTop) / gridHeight;
+            addMark(nx, ny);
+        });
+
         function drawGridCanvas() {
             ctxGrid.clearRect(0, 0, SIZE, SIZE);
-            // 画格子边框
             ctxGrid.strokeStyle = '#2c3e4f';
             ctxGrid.lineWidth = 3;
             ctxGrid.strokeRect(gridLeft, gridTop, gridWidth, gridHeight);
-            // 画干扰线
             shortLines.forEach(line => {
                 ctxGrid.strokeStyle = 'rgba(100,100,100,0.4)';
                 ctxGrid.lineWidth = line.width;
@@ -555,7 +578,6 @@
                 ctxGrid.lineTo(line.x2, line.y2);
                 ctxGrid.stroke();
             });
-            // 画辅助线
             if (showAux) {
                 ctxGrid.lineWidth = 3;
                 hLines.forEach(y => {
@@ -578,7 +600,7 @@
                 });
                 ctxGrid.globalAlpha = 1;
             }
-            // 画点 (半径2)
+            // 目标红点
             const px = gridLeft + gridPoint.x * gridWidth;
             const py = gridTop + gridPoint.y * gridHeight;
             ctxGrid.beginPath();
@@ -587,13 +609,26 @@
             ctxGrid.shadowBlur = 8;
             ctxGrid.arc(px, py, 2, 0, 2 * Math.PI);
             ctxGrid.fill();
+            // 用户标记点 (蓝色)
+            userMarks.forEach(mark => {
+                const mx = gridLeft + mark.x * gridWidth;
+                const my = gridTop + mark.y * gridHeight;
+                ctxGrid.beginPath();
+                ctxGrid.fillStyle = 'rgba(30, 144, 255, 0.5)';
+                ctxGrid.arc(mx, my, 5, 0, 2 * Math.PI);
+                ctxGrid.fill();
+                ctxGrid.beginPath();
+                ctxGrid.strokeStyle = '#1E90FF';
+                ctxGrid.lineWidth = 1.5;
+                ctxGrid.arc(mx, my, 5, 0, 2 * Math.PI);
+                ctxGrid.stroke();
+            });
             ctxGrid.shadowBlur = 0;
         }
 
-        // 初始化
         newGrid();
 
-        // ---------- 斜率模块 (点缩小，按钮分组稳定) ----------
+        // ---------- 斜率模块（手动画线 + 按钮）----------
         const curveCanvas = document.getElementById('curveCanvas');
         const angleCanvas = document.getElementById('angleCanvas');
         const ctxCurve = curveCanvas.getContext('2d');
@@ -603,7 +638,12 @@
         const MIN_POINT_DIST = 80;
 
         let curvePath = [], pointA = null, pointB = null, leftAngleMod = 0, rightAngle = 0;
-        const defaultHint = '↝ 调整右侧线段角度';
+        const defaultHint = '↝ 可手动画线或使用按钮调节';
+
+        // 手动画线状态
+        let drawing = false;
+        let startPoint = null;
+        let tempLine = null; // { x1, y1, x2, y2 }
 
         function catmullRom(p0, p1, p2, p3, t) {
             let t2 = t*t, t3 = t2*t;
@@ -688,10 +728,52 @@
             ctxCurve.strokeStyle = '#2c6e9e';
             ctxCurve.lineWidth = 3;
             ctxCurve.stroke();
-            // 点半径 2.5
             ctxCurve.fillStyle = '#c44b3c';
             ctxCurve.beginPath(); ctxCurve.arc(pointA.x, pointA.y, 2.5, 0, 2*Math.PI); ctxCurve.fill();
             ctxCurve.beginPath(); ctxCurve.arc(pointB.x, pointB.y, 2.5, 0, 2*Math.PI); ctxCurve.fill();
+        }
+
+        // 根据两个点计算修正后的直线（延伸到画布边界内）
+        function getStretchedLine(p1, p2, pad) {
+            const left = pad, right = ANGLE_SIZE - pad, top = pad, bottom = ANGLE_SIZE - pad;
+            let dx = p2.x - p1.x, dy = p2.y - p1.y;
+            if (dx === 0 && dy === 0) return { start: p1, end: p2 };
+            let tMin = -Infinity, tMax = Infinity;
+            // x 边界
+            if (dx !== 0) {
+                let t1 = (left - p1.x) / dx;
+                let t2 = (right - p1.x) / dx;
+                if (t1 > t2) [t1, t2] = [t2, t1];
+                tMin = Math.max(tMin, t1);
+                tMax = Math.min(tMax, t2);
+            } else {
+                if (p1.x < left || p1.x > right) return { start: p1, end: p2 };
+            }
+            // y 边界
+            if (dy !== 0) {
+                let t1 = (top - p1.y) / dy;
+                let t2 = (bottom - p1.y) / dy;
+                if (t1 > t2) [t1, t2] = [t2, t1];
+                tMin = Math.max(tMin, t1);
+                tMax = Math.min(tMax, t2);
+            } else {
+                if (p1.y < top || p1.y > bottom) return { start: p1, end: p2 };
+            }
+            if (tMin > tMax) return { start: p1, end: p2 };
+            let start = { x: p1.x + tMin * dx, y: p1.y + tMin * dy };
+            let end = { x: p1.x + tMax * dx, y: p1.y + tMax * dy };
+            return { start, end };
+        }
+
+        // 更新右侧角度并重绘
+        function setRightAngleFromLine(p1, p2) {
+            let angle = getAngleMod180(p1, p2);
+            // 注意 getAngleMod180 返回0-179，但我们需要的是0-360? 右侧角度存储0-360，显示模180
+            // 为了后续比对，我们存储原始角度（0-360）
+            let rawAngle = Math.atan2(p2.y - p1.y, p2.x - p1.x) * 180 / Math.PI;
+            if (rawAngle < 0) rawAngle += 360;
+            rightAngle = rawAngle;
+            drawAngleCanvas();
         }
 
         function drawAngleCanvas() {
@@ -724,6 +806,17 @@
                 ctxAngle.lineTo(inters[inters.length-1].x, inters[inters.length-1].y);
                 ctxAngle.stroke();
             }
+            // 如果有临时线条，绘制虚线
+            if (tempLine) {
+                ctxAngle.beginPath();
+                ctxAngle.setLineDash([6, 8]);
+                ctxAngle.strokeStyle = '#FF8C00';
+                ctxAngle.lineWidth = 2;
+                ctxAngle.moveTo(tempLine.x1, tempLine.y1);
+                ctxAngle.lineTo(tempLine.x2, tempLine.y2);
+                ctxAngle.stroke();
+                ctxAngle.setLineDash([]);
+            }
             updateAngleDisplay();
         }
 
@@ -739,6 +832,65 @@
 
         function resetHint() { document.getElementById('angleHint').innerText = defaultHint; }
 
+        // 手动画线事件
+        function getCanvasCoords(e) {
+            const rect = angleCanvas.getBoundingClientRect();
+            const scaleX = angleCanvas.width / rect.width;
+            const scaleY = angleCanvas.height / rect.height;
+            let clientX, clientY;
+            if (e.touches) {
+                clientX = e.touches[0].clientX;
+                clientY = e.touches[0].clientY;
+                e.preventDefault();
+            } else {
+                clientX = e.clientX;
+                clientY = e.clientY;
+            }
+            let x = (clientX - rect.left) * scaleX;
+            let y = (clientY - rect.top) * scaleY;
+            x = Math.min(Math.max(x, 0), ANGLE_SIZE);
+            y = Math.min(Math.max(y, 0), ANGLE_SIZE);
+            return { x, y };
+        }
+
+        function onPointerStart(e) {
+            e.preventDefault();
+            drawing = true;
+            let { x, y } = getCanvasCoords(e);
+            startPoint = { x, y };
+            tempLine = { x1: x, y1: y, x2: x, y2: y };
+            drawAngleCanvas();
+        }
+        function onPointerMove(e) {
+            if (!drawing) return;
+            e.preventDefault();
+            let { x, y } = getCanvasCoords(e);
+            tempLine = { x1: startPoint.x, y1: startPoint.y, x2: x, y2: y };
+            drawAngleCanvas();
+        }
+        function onPointerEnd(e) {
+            if (!drawing) return;
+            e.preventDefault();
+            let { x, y } = getCanvasCoords(e);
+            let p1 = startPoint, p2 = { x, y };
+            // 修正为直线并延伸到边界
+            let stretched = getStretchedLine(p1, p2, ANGLE_PAD + 6);
+            setRightAngleFromLine(stretched.start, stretched.end);
+            tempLine = null;
+            drawing = false;
+            startPoint = null;
+            drawAngleCanvas();
+            resetHint();
+        }
+
+        angleCanvas.addEventListener('mousedown', onPointerStart);
+        window.addEventListener('mousemove', onPointerMove);
+        window.addEventListener('mouseup', onPointerEnd);
+        angleCanvas.addEventListener('touchstart', onPointerStart);
+        window.addEventListener('touchmove', onPointerMove);
+        window.addEventListener('touchend', onPointerEnd);
+
+        // 按钮事件
         document.getElementById('angleStep1M').addEventListener('click', () => { rightAngle = (rightAngle - 1 + 360) % 360; drawAngleCanvas(); resetHint(); });
         document.getElementById('angleStep5M').addEventListener('click', () => { rightAngle = (rightAngle - 5 + 360) % 360; drawAngleCanvas(); resetHint(); });
         document.getElementById('angleStep10M').addEventListener('click', () => { rightAngle = (rightAngle - 10 + 360) % 360; drawAngleCanvas(); resetHint(); });
