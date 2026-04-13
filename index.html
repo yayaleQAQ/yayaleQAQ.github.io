@@ -96,7 +96,7 @@
             height: auto;
             border: 2px solid #fff5eb;
             cursor: crosshair;
-            touch-action: none;  /* 禁止触摸滚动 */
+            touch-action: none;
         }
         canvas.grid-canvas {
             max-width: 400px;
@@ -201,11 +201,42 @@
             font-weight: 600;
             font-size: 0.9rem;
         }
-        .color-btn-container {
+        .external-btn-container {
             display: flex;
-            justify-content: center;
-            align-items: center;
-            padding: 30px 20px;
+            flex-direction: column;
+            gap: 16px;
+            padding: 20px 12px;
+        }
+        .external-card {
+            background: white;
+            border-radius: 28px;
+            padding: 16px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            text-align: center;
+        }
+        .external-title {
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: #2e2a28;
+        }
+        .btn-external {
+            background: #4a6fa5;
+            color: white;
+            border: none;
+            border-radius: 60px;
+            padding: 12px 24px;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: 0.2s;
+            width: 80%;
+            max-width: 240px;
+            margin: 0 auto;
+            display: block;
+        }
+        .btn-external:active {
+            transform: scale(0.97);
         }
         .btn-large {
             background: #4a6fa5;
@@ -235,7 +266,7 @@
     <div class="tab-bar">
         <button class="tab active" data-tab="space">◫ 空间比例</button>
         <button class="tab" data-tab="slope">📐 曲线斜率</button>
-        <button class="tab" data-tab="color">🎨 色感训练</button>
+        <button class="tab" data-tab="external">🌐 外部练习</button>
     </div>
 
     <!-- 空间比例面板 -->
@@ -271,7 +302,7 @@
         </div>
     </div>
 
-    <!-- 斜率匹配面板（修复意外刷新） -->
+    <!-- 斜率匹配面板 -->
     <div id="slopePanel" class="panel">
         <div class="canvas-area">
             <div class="canvas-wrapper"><canvas id="curveCanvas" class="curve-canvas" width="250" height="250"></canvas><div class="canvas-label">曲线两点 (目测斜率)</div></div>
@@ -303,15 +334,30 @@
         </div>
     </div>
 
-    <!-- 色感训练面板 -->
-    <div id="colorPanel" class="panel">
-        <div class="canvas-area" style="padding: 20px 12px;">
-            <div class="color-btn-container">
-                <button class="btn-large" id="openColorTrainerBtn">🎨 打开色感训练器</button>
+    <!-- 外部练习面板（色感、透视等） -->
+    <div id="externalPanel" class="panel">
+        <div class="external-btn-container">
+            <!-- ============================================= -->
+            <!-- 外部练习添加说明：                                 -->
+            <!-- 1. 复制下面一个 .external-card 的整个区块            -->
+            <!-- 2. 修改 .external-title 中的文字为练习名称          -->
+            <!-- 3. 修改按钮的 data-url 属性为目标网址               -->
+            <!-- 4. 按钮文本可自定义                                 -->
+            <!-- 示例：                                             -->
+            <!-- <div class="external-card">                       -->
+            <!--   <div class="external-title">透视练习</div>       -->
+            <!--   <button class="btn-external" data-url="https://example.com/3d-model">打开练习</button> -->
+            <!-- </div>                                            -->
+            <!-- ============================================= -->
+            <div class="external-card">
+                <div class="external-title">🎨 色感训练 (HSB)</div>
+                <button class="btn-external" data-url="https://li-xiao-jia.github.io/tools/1_hsb-trainer.html">打开练习</button>
             </div>
-            <div style="text-align: center; font-size: 0.85rem; color: #6b5f58; margin-top: 8px;">
-                点击按钮将在新标签页中打开工具
+            <div class="external-card">
+                <div class="external-title">📐 透视练习 (3D模型)</div>
+                <button class="btn-external" data-url="https://sketchfab.com/3d-models/c4b168bff6de4327968daa2283846044">打开练习</button>
             </div>
+            <!-- 在此处继续添加更多外部练习卡片 -->
         </div>
     </div>
 </div>
@@ -323,7 +369,7 @@
         const panels = {
             space: document.getElementById('spacePanel'),
             slope: document.getElementById('slopePanel'),
-            color: document.getElementById('colorPanel')
+            external: document.getElementById('externalPanel')
         };
         tabs.forEach(tab => {
             tab.addEventListener('click', () => {
@@ -342,9 +388,13 @@
             });
         });
 
-        // 色感训练
-        const openBtn = document.getElementById('openColorTrainerBtn');
-        if (openBtn) openBtn.addEventListener('click', () => window.open('https://li-xiao-jia.github.io/tools/1_hsb-trainer.html', '_blank'));
+        // 外部练习按钮跳转 (动态绑定)
+        document.querySelectorAll('.btn-external').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const url = btn.getAttribute('data-url');
+                if (url) window.open(url, '_blank');
+            });
+        });
 
         // ---------- 空间比例模块 (多标记点) ----------
         const gridCanvas = document.getElementById('gridCanvas');
@@ -484,7 +534,7 @@
         }
         newGrid();
 
-        // ---------- 斜率模块 (使用 PointerEvent，防止意外刷新) ----------
+        // ---------- 斜率模块 (使用 PointerEvent) ----------
         const curveCanvas = document.getElementById('curveCanvas');
         const angleCanvas = document.getElementById('angleCanvas');
         const ctxCurve = curveCanvas.getContext('2d');
@@ -581,7 +631,7 @@
         function resetCurve() { drawCurveAndPoints(); }
         function resetHint() { document.getElementById('angleHint').innerText = defaultHint; }
 
-        // ========== 使用 PointerEvent 统一处理，防止意外刷新 ==========
+        // 使用 PointerEvent
         function getPointerCoords(e) {
             const rect = angleCanvas.getBoundingClientRect();
             const scaleX = angleCanvas.width / rect.width;
@@ -639,15 +689,12 @@
             }, 150);
         }
 
-        // 为角度画布注册事件
         angleCanvas.addEventListener('pointerdown', onPointerDown);
         angleCanvas.addEventListener('pointermove', onPointerMove);
         angleCanvas.addEventListener('pointerup', onPointerUp);
-        // 曲线画布也需要阻止默认触摸行为，防止页面滚动时意外刷新曲线
         curveCanvas.addEventListener('pointerdown', (e) => e.preventDefault());
         curveCanvas.addEventListener('touchstart', (e) => e.preventDefault(), { passive: false });
 
-        // 清除绘图状态的辅助函数
         function clearDrawingState() {
             if (autoFixTimer) clearTimeout(autoFixTimer);
             drawing = false;
@@ -656,7 +703,6 @@
             drawAngleCanvas();
         }
 
-        // 按钮事件
         document.getElementById('angleStep1M').addEventListener('click', () => { clearDrawingState(); rightAngle = (rightAngle - 1 + 360) % 360; drawAngleCanvas(); resetHint(); });
         document.getElementById('angleStep5M').addEventListener('click', () => { clearDrawingState(); rightAngle = (rightAngle - 5 + 360) % 360; drawAngleCanvas(); resetHint(); });
         document.getElementById('angleStep10M').addEventListener('click', () => { clearDrawingState(); rightAngle = (rightAngle - 10 + 360) % 360; drawAngleCanvas(); resetHint(); });
