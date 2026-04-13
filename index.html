@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes, viewport-fit=cover">
     <title>练习</title>
     <style>
         * {
@@ -10,6 +10,8 @@
             font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
             margin: 0;
             padding: 0;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
         }
         body {
             background: #f2f0e9;
@@ -63,7 +65,6 @@
             display: block;
         }
 
-        /* 画布卡片 */
         .canvas-area {
             background: #ffffffc4;
             border-radius: 28px;
@@ -95,6 +96,7 @@
             height: auto;
             border: 2px solid #fff5eb;
             cursor: crosshair;
+            touch-action: none;  /* 禁止触摸滚动 */
         }
         canvas.grid-canvas {
             max-width: 400px;
@@ -109,7 +111,6 @@
             aspect-ratio: 1/1;
         }
 
-        /* 控制条 */
         .control-panel {
             background: #f6f2eb;
             border-radius: 24px;
@@ -237,7 +238,7 @@
         <button class="tab" data-tab="color">🎨 色感训练</button>
     </div>
 
-    <!-- 空间比例面板（多标记点） -->
+    <!-- 空间比例面板 -->
     <div id="spacePanel" class="panel active">
         <div class="canvas-area">
             <canvas id="gridCanvas" class="grid-canvas" width="400" height="400"></canvas>
@@ -265,16 +266,16 @@
                 <button class="btn" id="addLineBtn">➕ 添加 ½ 辅助线</button>
             </div>
             <div class="result-badge" style="background: #e0d5ca; font-size:0.8rem;">
-                💡 点击格子添加蓝色标记点（可多个，用于核对比例）
+                💡 点击格子添加蓝色标记点（可多个）
             </div>
         </div>
     </div>
 
-    <!-- 斜率匹配面板（手动画线 + 按钮调节，修复手机触摸） -->
+    <!-- 斜率匹配面板（修复意外刷新） -->
     <div id="slopePanel" class="panel">
         <div class="canvas-area">
             <div class="canvas-wrapper"><canvas id="curveCanvas" class="curve-canvas" width="250" height="250"></canvas><div class="canvas-label">曲线两点 (目测斜率)</div></div>
-            <div class="canvas-wrapper"><canvas id="angleCanvas" class="angle-canvas" width="150" height="150"></canvas><div class="canvas-label">调节线段 (可手动画线)</div></div>
+            <div class="canvas-wrapper"><canvas id="angleCanvas" class="angle-canvas" width="150" height="150"></canvas><div class="canvas-label">手动画线 / 按钮调节</div></div>
         </div>
         <div class="control-panel">
             <div class="btn-row">
@@ -298,18 +299,18 @@
                 <button class="btn" id="submitAngleBtn">✓ 提交</button>
                 <button class="btn" id="resetCurveBtn">↺ 新曲线</button>
             </div>
-            <div class="result-badge" id="angleHint">↝ 可手动画线或使用按钮调节</div>
+            <div class="result-badge" id="angleHint">↝ 可手动画线或使用按钮</div>
         </div>
     </div>
 
-    <!-- 色感训练面板（按钮跳转） -->
+    <!-- 色感训练面板 -->
     <div id="colorPanel" class="panel">
         <div class="canvas-area" style="padding: 20px 12px;">
             <div class="color-btn-container">
                 <button class="btn-large" id="openColorTrainerBtn">🎨 打开色感训练器</button>
             </div>
             <div style="text-align: center; font-size: 0.85rem; color: #6b5f58; margin-top: 8px;">
-                点击按钮将在新标签页中打开专业的色感训练工具
+                点击按钮将在新标签页中打开工具
             </div>
         </div>
     </div>
@@ -317,7 +318,7 @@
 
 <script>
     (function() {
-        // ---------- 标签切换 ----------
+        // 标签切换
         const tabs = document.querySelectorAll('.tab');
         const panels = {
             space: document.getElementById('spacePanel'),
@@ -333,7 +334,7 @@
                 panels[target].classList.add('active');
                 if (target === 'space') drawGridCanvas();
                 else if (target === 'slope') {
-                    document.getElementById('angleHint').innerText = '↝ 可手动画线或使用按钮调节';
+                    document.getElementById('angleHint').innerText = '↝ 可手动画线或使用按钮';
                     updateAngleDisplay();
                     drawCurveAndPoints();
                     drawAngleCanvas();
@@ -341,35 +342,22 @@
             });
         });
 
-        // 色感训练按钮
+        // 色感训练
         const openBtn = document.getElementById('openColorTrainerBtn');
-        if (openBtn) {
-            openBtn.addEventListener('click', () => {
-                window.open('https://li-xiao-jia.github.io/tools/1_hsb-trainer.html', '_blank');
-            });
-        }
+        if (openBtn) openBtn.addEventListener('click', () => window.open('https://li-xiao-jia.github.io/tools/1_hsb-trainer.html', '_blank'));
 
-        // ---------- 空间比例模块（支持多个标记点）----------
+        // ---------- 空间比例模块 (多标记点) ----------
         const gridCanvas = document.getElementById('gridCanvas');
         const ctxGrid = gridCanvas.getContext('2d');
         const SIZE = 400;
         let gridLeft = 20, gridTop = 20, gridRight = 380, gridBottom = 380;
         let gridWidth = 360, gridHeight = 360;
-        let gridPoint = { x: 0.5, y: 0.5 };  // 目标红点
-        let userMarks = [];                  // 用户标记点数组
-        let hLines = [];
-        let vLines = [];
-        let curH = null;
-        let curV = null;
-        let history = [];
-        let shortLines = [];
-        let showAux = true;
-        let alpha = 0.7;
-        let currentOrient = 'horizontal';
-        let currentSide = 'up';
-
+        let gridPoint = { x: 0.5, y: 0.5 };
+        let userMarks = [];
+        let hLines = [], vLines = [], curH = null, curV = null, history = [], shortLines = [];
+        let showAux = true, alpha = 0.7;
+        let currentOrient = 'horizontal', currentSide = 'up';
         function getLineColor() { return '#FF3B3B'; }
-
         function randomGridSize() {
             const minSize = 220, maxSize = 400;
             gridWidth = Math.floor(Math.random() * (maxSize - minSize + 1)) + minSize;
@@ -379,7 +367,6 @@
             gridRight = gridLeft + gridWidth;
             gridBottom = gridTop + gridHeight;
         }
-
         function generateShortLines() {
             const area = gridWidth * gridHeight;
             let count = Math.floor(area / 600);
@@ -392,8 +379,7 @@
                 let maxLen = Math.min(gridWidth, gridHeight) * 0.4;
                 let minLen = 25;
                 let length = minLen + Math.random() * (maxLen - minLen);
-                let dx = length * Math.cos(angle);
-                let dy = length * Math.sin(angle);
+                let dx = length * Math.cos(angle), dy = length * Math.sin(angle);
                 let x2 = x1 + dx, y2 = y1 + dy;
                 if (x2 < gridLeft || x2 > gridRight || y2 < gridTop || y2 > gridBottom) {
                     x2 = x1 - dx; y2 = y1 - dy;
@@ -402,92 +388,51 @@
                 shortLines.push({ x1, y1, x2, y2, width: 2 + Math.floor(Math.random() * 3) });
             }
         }
-
-        function randomPoint() {
-            return { x: 0.1 + Math.random() * 0.8, y: 0.1 + Math.random() * 0.8 };
-        }
-
+        function randomPoint() { return { x: 0.1 + Math.random() * 0.8, y: 0.1 + Math.random() * 0.8 }; }
         function newGrid() {
-            randomGridSize();
-            generateShortLines();
+            randomGridSize(); generateShortLines();
             gridPoint = randomPoint();
-            userMarks = [];
-            hLines = [];
-            vLines = [];
-            curH = null;
-            curV = null;
-            history = [];
+            userMarks = []; hLines = []; vLines = []; curH = null; curV = null; history = [];
             drawGridCanvas();
         }
         document.getElementById('newGridBtn').addEventListener('click', newGrid);
-
         document.getElementById('undoAuxBtn').addEventListener('click', () => {
             if (history.length === 0) return;
             let last = history.pop();
-            hLines = [...last.hLines];
-            vLines = [...last.vLines];
-            curH = last.curH;
-            curV = last.curV;
+            hLines = [...last.hLines]; vLines = [...last.vLines];
+            curH = last.curH; curV = last.curV;
             userMarks = last.userMarks.map(p => ({ ...p }));
             drawGridCanvas();
         });
-
-        document.getElementById('clearMarkBtn').addEventListener('click', () => {
-            userMarks = [];
-            drawGridCanvas();
-        });
-
+        document.getElementById('clearMarkBtn').addEventListener('click', () => { userMarks = []; drawGridCanvas(); });
         function addAuxLine() {
-            let type = currentOrient;
-            let side = currentSide;
-            history.push({
-                hLines: [...hLines],
-                vLines: [...vLines],
-                curH: curH,
-                curV: curV,
-                userMarks: userMarks.map(p => ({ ...p }))
-            });
+            let type = currentOrient, side = currentSide;
+            history.push({ hLines: [...hLines], vLines: [...vLines], curH, curV, userMarks: userMarks.map(p=>({...p})) });
             if (type === 'horizontal') {
-                if (curH === null) {
-                    if (side === 'up') curH = 0 + 1 * 0.5;
-                    else curH = 1 - 1 * 0.5;
-                } else {
+                if (curH === null) curH = (side === 'up') ? 0 + 0.5 : 1 - 0.5;
+                else {
                     if (side === 'up') {
-                        let candidates = hLines.filter(y => y > curH);
-                        candidates.push(1);
+                        let candidates = hLines.filter(y => y > curH); candidates.push(1);
                         let nearest = Math.min(...candidates);
-                        let distance = nearest - curH;
-                        let move = distance * 0.5;
-                        curH = curH + move;
+                        curH = curH + (nearest - curH) * 0.5;
                     } else {
-                        let candidates = hLines.filter(y => y < curH);
-                        candidates.push(0);
+                        let candidates = hLines.filter(y => y < curH); candidates.push(0);
                         let nearest = Math.max(...candidates);
-                        let distance = curH - nearest;
-                        let move = distance * 0.5;
-                        curH = curH - move;
+                        curH = curH - (curH - nearest) * 0.5;
                     }
                 }
                 hLines.push(curH);
             } else {
-                if (curV === null) {
-                    if (side === 'up') curV = 1 - 1 * 0.5;
-                    else curV = 0 + 1 * 0.5;
-                } else {
+                if (curV === null) curV = (side === 'up') ? 1 - 0.5 : 0 + 0.5;
+                else {
                     if (side === 'up') {
-                        let candidates = vLines.filter(x => x < curV);
-                        candidates.push(0);
+                        let candidates = vLines.filter(x => x < curV); candidates.push(0);
                         let nearest = Math.max(...candidates);
-                        let distance = curV - nearest;
-                        let move = distance * 0.5;
-                        curV = curV - move;
+                        curV = curV - (curV - nearest) * 0.5;
                     } else {
-                        let candidates = vLines.filter(x => x > curV);
-                        candidates.push(1);
+                        let candidates = vLines.filter(x => x > curV); candidates.push(1);
                         let nearest = Math.min(...candidates);
-                        let distance = nearest - curV;
-                        let move = distance * 0.5;
-                        curV = curV + move;
+                        curV = curV + (nearest - curV) * 0.5;
                     }
                 }
                 vLines.push(curV);
@@ -495,140 +440,51 @@
             drawGridCanvas();
         }
         document.getElementById('addLineBtn').addEventListener('click', addAuxLine);
-
-        document.querySelectorAll('[data-orient]').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                document.querySelectorAll('[data-orient]').forEach(b => b.classList.remove('selected'));
-                e.target.classList.add('selected');
-                currentOrient = e.target.dataset.orient;
-            });
-        });
-        document.querySelectorAll('[data-side]').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                document.querySelectorAll('[data-side]').forEach(b => b.classList.remove('selected'));
-                e.target.classList.add('selected');
-                currentSide = e.target.dataset.side;
-            });
-        });
-
-        document.getElementById('toggleAuxBtn').addEventListener('click', (e) => {
-            showAux = !showAux;
-            e.target.textContent = showAux ? '👁 隐藏辅助线' : '👁 显示辅助线';
-            drawGridCanvas();
-        });
-        document.getElementById('lineAlphaSlider').addEventListener('input', (e) => {
-            alpha = parseFloat(e.target.value);
-            drawGridCanvas();
-        });
-
-        function addMark(nx, ny) {
-            if (nx >= 0 && nx <= 1 && ny >= 0 && ny <= 1) {
-                userMarks.push({ x: nx, y: ny });
-                drawGridCanvas();
-            }
-        }
-
+        document.querySelectorAll('[data-orient]').forEach(btn => btn.addEventListener('click', (e) => {
+            document.querySelectorAll('[data-orient]').forEach(b=>b.classList.remove('selected'));
+            e.target.classList.add('selected'); currentOrient = e.target.dataset.orient;
+        }));
+        document.querySelectorAll('[data-side]').forEach(btn => btn.addEventListener('click', (e) => {
+            document.querySelectorAll('[data-side]').forEach(b=>b.classList.remove('selected'));
+            e.target.classList.add('selected'); currentSide = e.target.dataset.side;
+        }));
+        document.getElementById('toggleAuxBtn').addEventListener('click', (e) => { showAux = !showAux; e.target.textContent = showAux ? '👁 隐藏辅助线' : '👁 显示辅助线'; drawGridCanvas(); });
+        document.getElementById('lineAlphaSlider').addEventListener('input', (e) => { alpha = parseFloat(e.target.value); drawGridCanvas(); });
+        function addMark(nx, ny) { if (nx>=0 && nx<=1 && ny>=0 && ny<=1) { userMarks.push({ x: nx, y: ny }); drawGridCanvas(); } }
         function handleCanvasClick(e) {
             const rect = gridCanvas.getBoundingClientRect();
-            const scaleX = gridCanvas.width / rect.width;
-            const scaleY = gridCanvas.height / rect.height;
+            const scaleX = gridCanvas.width / rect.width, scaleY = gridCanvas.height / rect.height;
             let clientX, clientY;
-            if (e.touches) {
-                clientX = e.touches[0].clientX;
-                clientY = e.touches[0].clientY;
-                e.preventDefault();
-            } else {
-                clientX = e.clientX;
-                clientY = e.clientY;
-            }
-            let canvasX = (clientX - rect.left) * scaleX;
-            let canvasY = (clientY - rect.top) * scaleY;
-            canvasX = Math.min(Math.max(canvasX, 0), SIZE);
-            canvasY = Math.min(Math.max(canvasY, 0), SIZE);
-            let nx = (canvasX - gridLeft) / gridWidth;
-            let ny = (canvasY - gridTop) / gridHeight;
+            if (e.touches) { clientX = e.touches[0].clientX; clientY = e.touches[0].clientY; e.preventDefault(); }
+            else { clientX = e.clientX; clientY = e.clientY; }
+            let canvasX = (clientX - rect.left) * scaleX, canvasY = (clientY - rect.top) * scaleY;
+            canvasX = Math.min(Math.max(canvasX, 0), SIZE); canvasY = Math.min(Math.max(canvasY, 0), SIZE);
+            let nx = (canvasX - gridLeft) / gridWidth, ny = (canvasY - gridTop) / gridHeight;
             addMark(nx, ny);
         }
         gridCanvas.addEventListener('click', handleCanvasClick);
-        gridCanvas.addEventListener('touchstart', (e) => {
-            e.preventDefault();
-            const rect = gridCanvas.getBoundingClientRect();
-            const touch = e.touches[0];
-            const scaleX = gridCanvas.width / rect.width;
-            const scaleY = gridCanvas.height / rect.height;
-            let canvasX = (touch.clientX - rect.left) * scaleX;
-            let canvasY = (touch.clientY - rect.top) * scaleY;
-            canvasX = Math.min(Math.max(canvasX, 0), SIZE);
-            canvasY = Math.min(Math.max(canvasY, 0), SIZE);
-            let nx = (canvasX - gridLeft) / gridWidth;
-            let ny = (canvasY - gridTop) / gridHeight;
-            addMark(nx, ny);
-        });
-
+        gridCanvas.addEventListener('touchstart', (e) => { e.preventDefault(); handleCanvasClick(e); });
         function drawGridCanvas() {
             ctxGrid.clearRect(0, 0, SIZE, SIZE);
-            ctxGrid.strokeStyle = '#2c3e4f';
-            ctxGrid.lineWidth = 3;
-            ctxGrid.strokeRect(gridLeft, gridTop, gridWidth, gridHeight);
-            shortLines.forEach(line => {
-                ctxGrid.strokeStyle = 'rgba(100,100,100,0.4)';
-                ctxGrid.lineWidth = line.width;
-                ctxGrid.beginPath();
-                ctxGrid.moveTo(line.x1, line.y1);
-                ctxGrid.lineTo(line.x2, line.y2);
-                ctxGrid.stroke();
-            });
+            ctxGrid.strokeStyle = '#2c3e4f'; ctxGrid.lineWidth = 3; ctxGrid.strokeRect(gridLeft, gridTop, gridWidth, gridHeight);
+            shortLines.forEach(line => { ctxGrid.strokeStyle = 'rgba(100,100,100,0.4)'; ctxGrid.lineWidth = line.width; ctxGrid.beginPath(); ctxGrid.moveTo(line.x1, line.y1); ctxGrid.lineTo(line.x2, line.y2); ctxGrid.stroke(); });
             if (showAux) {
                 ctxGrid.lineWidth = 3;
-                hLines.forEach(y => {
-                    ctxGrid.globalAlpha = alpha;
-                    ctxGrid.strokeStyle = getLineColor();
-                    let yPos = gridTop + y * gridHeight;
-                    ctxGrid.beginPath();
-                    ctxGrid.moveTo(gridLeft, yPos);
-                    ctxGrid.lineTo(gridRight, yPos);
-                    ctxGrid.stroke();
-                });
-                vLines.forEach(x => {
-                    ctxGrid.globalAlpha = alpha;
-                    ctxGrid.strokeStyle = getLineColor();
-                    let xPos = gridLeft + x * gridWidth;
-                    ctxGrid.beginPath();
-                    ctxGrid.moveTo(xPos, gridTop);
-                    ctxGrid.lineTo(xPos, gridBottom);
-                    ctxGrid.stroke();
-                });
+                hLines.forEach(y => { ctxGrid.globalAlpha = alpha; ctxGrid.strokeStyle = getLineColor(); let yPos = gridTop + y * gridHeight; ctxGrid.beginPath(); ctxGrid.moveTo(gridLeft, yPos); ctxGrid.lineTo(gridRight, yPos); ctxGrid.stroke(); });
+                vLines.forEach(x => { ctxGrid.globalAlpha = alpha; ctxGrid.strokeStyle = getLineColor(); let xPos = gridLeft + x * gridWidth; ctxGrid.beginPath(); ctxGrid.moveTo(xPos, gridTop); ctxGrid.lineTo(xPos, gridBottom); ctxGrid.stroke(); });
                 ctxGrid.globalAlpha = 1;
             }
-            // 目标红点
-            const px = gridLeft + gridPoint.x * gridWidth;
-            const py = gridTop + gridPoint.y * gridHeight;
-            ctxGrid.beginPath();
-            ctxGrid.fillStyle = '#c44b3c';
-            ctxGrid.shadowColor = '#b33a2a';
-            ctxGrid.shadowBlur = 8;
-            ctxGrid.arc(px, py, 2, 0, 2 * Math.PI);
-            ctxGrid.fill();
-            // 用户标记点
-            userMarks.forEach(mark => {
-                const mx = gridLeft + mark.x * gridWidth;
-                const my = gridTop + mark.y * gridHeight;
-                ctxGrid.beginPath();
-                ctxGrid.fillStyle = 'rgba(30, 144, 255, 0.5)';
-                ctxGrid.arc(mx, my, 5, 0, 2 * Math.PI);
-                ctxGrid.fill();
-                ctxGrid.beginPath();
-                ctxGrid.strokeStyle = '#1E90FF';
-                ctxGrid.lineWidth = 1.5;
-                ctxGrid.arc(mx, my, 5, 0, 2 * Math.PI);
-                ctxGrid.stroke();
+            const px = gridLeft + gridPoint.x * gridWidth, py = gridTop + gridPoint.y * gridHeight;
+            ctxGrid.beginPath(); ctxGrid.fillStyle = '#c44b3c'; ctxGrid.shadowColor = '#b33a2a'; ctxGrid.shadowBlur = 8; ctxGrid.arc(px, py, 2, 0, 2*Math.PI); ctxGrid.fill();
+            userMarks.forEach(mark => { const mx = gridLeft + mark.x * gridWidth, my = gridTop + mark.y * gridHeight;
+                ctxGrid.beginPath(); ctxGrid.fillStyle = 'rgba(30,144,255,0.5)'; ctxGrid.arc(mx, my, 5, 0, 2*Math.PI); ctxGrid.fill();
+                ctxGrid.beginPath(); ctxGrid.strokeStyle = '#1E90FF'; ctxGrid.lineWidth = 1.5; ctxGrid.arc(mx, my, 5, 0, 2*Math.PI); ctxGrid.stroke();
             });
             ctxGrid.shadowBlur = 0;
         }
-
         newGrid();
 
-        // ---------- 斜率模块（手动画线 + 按钮，修复手机触摸）----------
+        // ---------- 斜率模块 (使用 PointerEvent，防止意外刷新) ----------
         const curveCanvas = document.getElementById('curveCanvas');
         const angleCanvas = document.getElementById('angleCanvas');
         const ctxCurve = curveCanvas.getContext('2d');
@@ -636,213 +492,102 @@
         const CURVE_SIZE = 250, ANGLE_SIZE = 150;
         const CURVE_PAD = 15, ANGLE_PAD = 10;
         const MIN_POINT_DIST = 80;
-
         let curvePath = [], pointA = null, pointB = null, leftAngleMod = 0, rightAngle = 0;
-        const defaultHint = '↝ 可手动画线或使用按钮调节';
-
-        // 手动画线状态
         let drawing = false;
         let startPoint = null;
         let tempLine = null;
+        let autoFixTimer = null;
+        const defaultHint = '↝ 可手动画线或使用按钮';
 
-        function catmullRom(p0, p1, p2, p3, t) {
-            let t2 = t*t, t3 = t2*t;
-            return 0.5 * ((2 * p1) + (-p0 + p2) * t + (2*p0 - 5*p1 + 4*p2 - p3) * t2 + (-p0 + 3*p1 - 3*p2 + p3) * t3);
-        }
-
+        function catmullRom(p0,p1,p2,p3,t) { let t2=t*t,t3=t2*t; return 0.5*((2*p1)+(-p0+p2)*t+(2*p0-5*p1+4*p2-p3)*t2+(-p0+3*p1-3*p2+p3)*t3); }
         function generateRandomCurve() {
-            const maxAttempts = 30;
-            for (let attempt = 0; attempt < maxAttempts; attempt++) {
-                const w = CURVE_SIZE - 2 * CURVE_PAD;
-                const h = CURVE_SIZE - 2 * CURVE_PAD;
-                const numPoints = 3 + Math.floor(Math.random() * 4);
-                let points = [];
-                for (let i = 0; i < numPoints; i++) {
-                    points.push({ x: CURVE_PAD + Math.random() * w, y: CURVE_PAD + Math.random() * h });
-                }
+            for(let a=0;a<30;a++) {
+                const w = CURVE_SIZE-2*CURVE_PAD, h = CURVE_SIZE-2*CURVE_PAD;
+                const num = 3+Math.floor(Math.random()*4);
+                let pts = [];
+                for(let i=0;i<num;i++) pts.push({ x: CURVE_PAD+Math.random()*w, y: CURVE_PAD+Math.random()*h });
                 let curve = [];
-                for (let i = 0; i < points.length - 1; i++) {
-                    let p0 = points[Math.max(0, i-1)], p1 = points[i], p2 = points[i+1], p3 = points[Math.min(points.length-1, i+2)];
-                    for (let t = 0; t <= 50; t++) {
-                        let t2 = t / 50;
-                        let x = catmullRom(p0.x, p1.x, p2.x, p3.x, t2);
-                        let y = catmullRom(p0.y, p1.y, p2.y, p3.y, t2);
-                        x = Math.min(Math.max(x, CURVE_PAD), CURVE_SIZE - CURVE_PAD);
-                        y = Math.min(Math.max(y, CURVE_PAD), CURVE_SIZE - CURVE_PAD);
-                        curve.push({ x, y });
+                for(let i=0;i<pts.length-1;i++) {
+                    let p0=pts[Math.max(0,i-1)],p1=pts[i],p2=pts[i+1],p3=pts[Math.min(pts.length-1,i+2)];
+                    for(let t=0;t<=50;t++) { let t2=t/50; let x=catmullRom(p0.x,p1.x,p2.x,p3.x,t2), y=catmullRom(p0.y,p1.y,p2.y,p3.y,t2);
+                        x=Math.min(Math.max(x,CURVE_PAD),CURVE_SIZE-CURVE_PAD); y=Math.min(Math.max(y,CURVE_PAD),CURVE_SIZE-CURVE_PAD);
+                        curve.push({x,y});
                     }
                 }
-                let unique = [];
-                for (let i = 0; i < curve.length; i++) {
-                    if (i === 0 || Math.hypot(curve[i].x - curve[i-1].x, curve[i].y - curve[i-1].y) > 1) unique.push(curve[i]);
-                }
-                let allIn = unique.every(p => p.x >= CURVE_PAD && p.x <= CURVE_SIZE-CURVE_PAD && p.y >= CURVE_PAD && p.y <= CURVE_SIZE-CURVE_PAD);
-                if (allIn && unique.length > 10) return unique;
+                let unique=[];
+                for(let i=0;i<curve.length;i++) if(i===0||Math.hypot(curve[i].x-curve[i-1].x,curve[i].y-curve[i-1].y)>1) unique.push(curve[i]);
+                if(unique.every(p=>p.x>=CURVE_PAD&&p.x<=CURVE_SIZE-CURVE_PAD&&p.y>=CURVE_PAD&&p.y<=CURVE_SIZE-CURVE_PAD)&&unique.length>10) return unique;
             }
-            return [{ x: CURVE_PAD, y: CURVE_SIZE/2 }, { x: CURVE_SIZE-CURVE_PAD, y: CURVE_SIZE/2 }];
+            return [{x:CURVE_PAD,y:CURVE_SIZE/2},{x:CURVE_SIZE-CURVE_PAD,y:CURVE_SIZE/2}];
         }
-
         function pickTwoPointsOnCurve(curve) {
-            if (curve.length < 10) return { a: curve[0], b: curve[curve.length-1] };
-            let maxAttempts = 300;
-            for (let attempt = 0; attempt < maxAttempts; attempt++) {
-                let idx1 = Math.floor(Math.random() * curve.length);
-                let idx2 = Math.floor(Math.random() * curve.length);
-                if (Math.abs(idx1 - idx2) < curve.length * 0.25) continue;
-                let p1 = curve[idx1], p2 = curve[idx2];
-                if (Math.hypot(p1.x - p2.x, p1.y - p2.y) > MIN_POINT_DIST) {
-                    return { a: p1, b: p2 };
-                }
+            if(curve.length<10) return {a:curve[0],b:curve[curve.length-1]};
+            for(let i=0;i<300;i++) {
+                let i1=Math.floor(Math.random()*curve.length), i2=Math.floor(Math.random()*curve.length);
+                if(Math.abs(i1-i2)<curve.length*0.25) continue;
+                let p1=curve[i1],p2=curve[i2];
+                if(Math.hypot(p1.x-p2.x,p1.y-p2.y)>MIN_POINT_DIST) return {a:p1,b:p2};
             }
-            let maxDist = 0, best = { a: curve[0], b: curve[curve.length-1] };
-            for (let i = 0; i < Math.min(curve.length, 50); i++) {
-                for (let j = i+1; j < Math.min(curve.length, 50); j++) {
-                    let d = Math.hypot(curve[i].x - curve[j].x, curve[i].y - curve[j].y);
-                    if (d > maxDist) { maxDist = d; best = { a: curve[i], b: curve[j] }; }
-                }
-            }
+            let maxD=0,best={a:curve[0],b:curve[curve.length-1]};
+            for(let i=0;i<Math.min(curve.length,50);i++) for(let j=i+1;j<Math.min(curve.length,50);j++) { let d=Math.hypot(curve[i].x-curve[j].x,curve[i].y-curve[j].y); if(d>maxD) { maxD=d; best={a:curve[i],b:curve[j]}; } }
             return best;
         }
-
-        function getAngleMod180(p1, p2) {
-            let dx = p2.x - p1.x, dy = p2.y - p1.y;
-            let deg = Math.atan2(dy, dx) * 180 / Math.PI;
-            if (deg < 0) deg += 360;
-            let mod = deg % 180;
-            if (mod < 0) mod += 180;
-            return mod;
-        }
-
+        function getAngleMod180(p1,p2) { let dx=p2.x-p1.x,dy=p2.y-p1.y; let deg=Math.atan2(dy,dx)*180/Math.PI; if(deg<0) deg+=360; let mod=deg%180; if(mod<0) mod+=180; return mod; }
         function drawCurveAndPoints() {
             curvePath = generateRandomCurve();
-            let { a, b } = pickTwoPointsOnCurve(curvePath);
-            pointA = a; pointB = b;
-            leftAngleMod = getAngleMod180(pointA, pointB);
-            ctxCurve.clearRect(0, 0, CURVE_SIZE, CURVE_SIZE);
-            ctxCurve.strokeStyle = '#333';
-            ctxCurve.lineWidth = 2;
-            ctxCurve.strokeRect(CURVE_PAD, CURVE_PAD, CURVE_SIZE - 2*CURVE_PAD, CURVE_SIZE - 2*CURVE_PAD);
-            ctxCurve.beginPath();
-            ctxCurve.moveTo(curvePath[0].x, curvePath[0].y);
-            for (let i = 1; i < curvePath.length; i++) ctxCurve.lineTo(curvePath[i].x, curvePath[i].y);
-            ctxCurve.strokeStyle = '#2c6e9e';
-            ctxCurve.lineWidth = 3;
-            ctxCurve.stroke();
-            ctxCurve.fillStyle = '#c44b3c';
-            ctxCurve.beginPath(); ctxCurve.arc(pointA.x, pointA.y, 2.5, 0, 2*Math.PI); ctxCurve.fill();
-            ctxCurve.beginPath(); ctxCurve.arc(pointB.x, pointB.y, 2.5, 0, 2*Math.PI); ctxCurve.fill();
+            let {a,b} = pickTwoPointsOnCurve(curvePath);
+            pointA=a; pointB=b; leftAngleMod=getAngleMod180(pointA,pointB);
+            ctxCurve.clearRect(0,0,CURVE_SIZE,CURVE_SIZE);
+            ctxCurve.strokeStyle='#333'; ctxCurve.lineWidth=2; ctxCurve.strokeRect(CURVE_PAD,CURVE_PAD,CURVE_SIZE-2*CURVE_PAD,CURVE_SIZE-2*CURVE_PAD);
+            ctxCurve.beginPath(); ctxCurve.moveTo(curvePath[0].x,curvePath[0].y);
+            for(let i=1;i<curvePath.length;i++) ctxCurve.lineTo(curvePath[i].x,curvePath[i].y);
+            ctxCurve.strokeStyle='#2c6e9e'; ctxCurve.lineWidth=3; ctxCurve.stroke();
+            ctxCurve.fillStyle='#c44b3c'; ctxCurve.beginPath(); ctxCurve.arc(pointA.x,pointA.y,2.5,0,2*Math.PI); ctxCurve.fill();
+            ctxCurve.beginPath(); ctxCurve.arc(pointB.x,pointB.y,2.5,0,2*Math.PI); ctxCurve.fill();
         }
-
-        // 根据两个点计算修正后的直线（延伸到画布边界内）
-        function getStretchedLine(p1, p2, pad) {
-            const left = pad, right = ANGLE_SIZE - pad, top = pad, bottom = ANGLE_SIZE - pad;
-            let dx = p2.x - p1.x, dy = p2.y - p1.y;
-            if (dx === 0 && dy === 0) return { start: p1, end: p2 };
-            let tMin = -Infinity, tMax = Infinity;
-            if (dx !== 0) {
-                let t1 = (left - p1.x) / dx;
-                let t2 = (right - p1.x) / dx;
-                if (t1 > t2) [t1, t2] = [t2, t1];
-                tMin = Math.max(tMin, t1);
-                tMax = Math.min(tMax, t2);
-            } else {
-                if (p1.x < left || p1.x > right) return { start: p1, end: p2 };
-            }
-            if (dy !== 0) {
-                let t1 = (top - p1.y) / dy;
-                let t2 = (bottom - p1.y) / dy;
-                if (t1 > t2) [t1, t2] = [t2, t1];
-                tMin = Math.max(tMin, t1);
-                tMax = Math.min(tMax, t2);
-            } else {
-                if (p1.y < top || p1.y > bottom) return { start: p1, end: p2 };
-            }
-            if (tMin > tMax) return { start: p1, end: p2 };
-            let start = { x: p1.x + tMin * dx, y: p1.y + tMin * dy };
-            let end = { x: p1.x + tMax * dx, y: p1.y + tMax * dy };
-            return { start, end };
+        function getStretchedLine(p1,p2,pad) {
+            const left=pad, right=ANGLE_SIZE-pad, top=pad, bottom=ANGLE_SIZE-pad;
+            let dx=p2.x-p1.x, dy=p2.y-p1.y;
+            if(dx===0 && dy===0) return {start:p1,end:p2};
+            let tMin=-Infinity, tMax=Infinity;
+            if(dx!==0) { let t1=(left-p1.x)/dx, t2=(right-p1.x)/dx; if(t1>t2)[t1,t2]=[t2,t1]; tMin=Math.max(tMin,t1); tMax=Math.min(tMax,t2); } else if(p1.x<left||p1.x>right) return {start:p1,end:p2};
+            if(dy!==0) { let t1=(top-p1.y)/dy, t2=(bottom-p1.y)/dy; if(t1>t2)[t1,t2]=[t2,t1]; tMin=Math.max(tMin,t1); tMax=Math.min(tMax,t2); } else if(p1.y<top||p1.y>bottom) return {start:p1,end:p2};
+            if(tMin>tMax) return {start:p1,end:p2};
+            return {start:{x:p1.x+tMin*dx,y:p1.y+tMin*dy}, end:{x:p1.x+tMax*dx,y:p1.y+tMax*dy}};
         }
-
-        function setRightAngleFromLine(p1, p2) {
-            let rawAngle = Math.atan2(p2.y - p1.y, p2.x - p1.x) * 180 / Math.PI;
-            if (rawAngle < 0) rawAngle += 360;
-            rightAngle = rawAngle;
-            drawAngleCanvas();
+        function setRightAngleFromLine(p1,p2) {
+            let raw=Math.atan2(p2.y-p1.y,p2.x-p1.x)*180/Math.PI; if(raw<0) raw+=360;
+            rightAngle=raw; drawAngleCanvas();
         }
-
         function drawAngleCanvas() {
-            ctxAngle.clearRect(0, 0, ANGLE_SIZE, ANGLE_SIZE);
-            ctxAngle.strokeStyle = '#333';
-            ctxAngle.lineWidth = 2;
-            ctxAngle.strokeRect(ANGLE_PAD, ANGLE_PAD, ANGLE_SIZE - 2*ANGLE_PAD, ANGLE_SIZE - 2*ANGLE_PAD);
-            let cx = ANGLE_SIZE/2, cy = ANGLE_SIZE/2;
-            let rad = rightAngle * Math.PI/180;
-            let left = ANGLE_PAD + 6, right = ANGLE_SIZE - ANGLE_PAD - 6, top = ANGLE_PAD + 6, bottom = ANGLE_SIZE - ANGLE_PAD - 6;
-            let inters = [];
-            if (Math.cos(rad) !== 0) {
-                let t = (left - cx)/Math.cos(rad); let y = cy + t*Math.sin(rad);
-                if (y>=top && y<=bottom) inters.push({ x: left, y, t });
-                t = (right - cx)/Math.cos(rad); y = cy + t*Math.sin(rad);
-                if (y>=top && y<=bottom) inters.push({ x: right, y, t });
+            ctxAngle.clearRect(0,0,ANGLE_SIZE,ANGLE_SIZE);
+            ctxAngle.strokeStyle='#333'; ctxAngle.lineWidth=2; ctxAngle.strokeRect(ANGLE_PAD,ANGLE_PAD,ANGLE_SIZE-2*ANGLE_PAD,ANGLE_SIZE-2*ANGLE_PAD);
+            let cx=ANGLE_SIZE/2, cy=ANGLE_SIZE/2, rad=rightAngle*Math.PI/180;
+            let left=ANGLE_PAD+6, right=ANGLE_SIZE-ANGLE_PAD-6, top=ANGLE_PAD+6, bottom=ANGLE_SIZE-ANGLE_PAD-6;
+            let inters=[];
+            if(Math.cos(rad)!==0) {
+                let t=(left-cx)/Math.cos(rad), y=cy+t*Math.sin(rad); if(y>=top&&y<=bottom) inters.push({x:left,y,t});
+                t=(right-cx)/Math.cos(rad); y=cy+t*Math.sin(rad); if(y>=top&&y<=bottom) inters.push({x:right,y,t});
             }
-            if (Math.sin(rad) !== 0) {
-                let t = (top - cy)/Math.sin(rad); let x = cx + t*Math.cos(rad);
-                if (x>=left && x<=right) inters.push({ x, y: top, t });
-                t = (bottom - cy)/Math.sin(rad); x = cx + t*Math.cos(rad);
-                if (x>=left && x<=right) inters.push({ x, y: bottom, t });
+            if(Math.sin(rad)!==0) {
+                let t=(top-cy)/Math.sin(rad), x=cx+t*Math.cos(rad); if(x>=left&&x<=right) inters.push({x,y:top,t});
+                t=(bottom-cy)/Math.sin(rad); x=cx+t*Math.cos(rad); if(x>=left&&x<=right) inters.push({x,y:bottom,t});
             }
-            if (inters.length >= 2) {
-                inters.sort((a,b)=>a.t-b.t);
-                ctxAngle.beginPath();
-                ctxAngle.strokeStyle = '#000';
-                ctxAngle.lineWidth = 3;
-                ctxAngle.moveTo(inters[0].x, inters[0].y);
-                ctxAngle.lineTo(inters[inters.length-1].x, inters[inters.length-1].y);
-                ctxAngle.stroke();
-            }
-            if (tempLine) {
-                ctxAngle.beginPath();
-                ctxAngle.setLineDash([6, 8]);
-                ctxAngle.strokeStyle = '#FF8C00';
-                ctxAngle.lineWidth = 2;
-                ctxAngle.moveTo(tempLine.x1, tempLine.y1);
-                ctxAngle.lineTo(tempLine.x2, tempLine.y2);
-                ctxAngle.stroke();
-                ctxAngle.setLineDash([]);
-            }
+            if(inters.length>=2) { inters.sort((a,b)=>a.t-b.t); ctxAngle.beginPath(); ctxAngle.strokeStyle='#000'; ctxAngle.lineWidth=3; ctxAngle.moveTo(inters[0].x,inters[0].y); ctxAngle.lineTo(inters[inters.length-1].x,inters[inters.length-1].y); ctxAngle.stroke(); }
+            if(tempLine) { ctxAngle.beginPath(); ctxAngle.setLineDash([6,8]); ctxAngle.strokeStyle='#FF8C00'; ctxAngle.lineWidth=2; ctxAngle.moveTo(tempLine.x1,tempLine.y1); ctxAngle.lineTo(tempLine.x2,tempLine.y2); ctxAngle.stroke(); ctxAngle.setLineDash([]); }
             updateAngleDisplay();
         }
-
-        function updateAngleDisplay() {
-            let disp = rightAngle % 180;
-            if (disp < 0) disp += 180;
-            document.getElementById('angleDisplay').innerText = Math.round(disp) + '°';
-        }
-
-        function resetCurve() {
-            drawCurveAndPoints();
-        }
-
+        function updateAngleDisplay() { let disp=rightAngle%180; if(disp<0) disp+=180; document.getElementById('angleDisplay').innerText=Math.round(disp)+'°'; }
+        function resetCurve() { drawCurveAndPoints(); }
         function resetHint() { document.getElementById('angleHint').innerText = defaultHint; }
 
-        // ---------- 手动画线事件（修复手机触摸）----------
-        function getCanvasCoords(e) {
+        // ========== 使用 PointerEvent 统一处理，防止意外刷新 ==========
+        function getPointerCoords(e) {
             const rect = angleCanvas.getBoundingClientRect();
             const scaleX = angleCanvas.width / rect.width;
             const scaleY = angleCanvas.height / rect.height;
-            let clientX, clientY;
-            if (e.touches) {
-                // 触摸移动或开始
-                clientX = e.touches[0].clientX;
-                clientY = e.touches[0].clientY;
-            } else if (e.changedTouches) {
-                // 触摸结束使用 changedTouches
-                clientX = e.changedTouches[0].clientX;
-                clientY = e.changedTouches[0].clientY;
-            } else {
-                clientX = e.clientX;
-                clientY = e.clientY;
-            }
+            let clientX = e.clientX;
+            let clientY = e.clientY;
             let x = (clientX - rect.left) * scaleX;
             let y = (clientY - rect.top) * scaleY;
             x = Math.min(Math.max(x, 0), ANGLE_SIZE);
@@ -850,10 +595,12 @@
             return { x, y };
         }
 
-        function onPointerStart(e) {
+        function onPointerDown(e) {
             e.preventDefault();
+            angleCanvas.setPointerCapture(e.pointerId);
+            if (autoFixTimer) clearTimeout(autoFixTimer);
             drawing = true;
-            let { x, y } = getCanvasCoords(e);
+            let { x, y } = getPointerCoords(e);
             startPoint = { x, y };
             tempLine = { x1: x, y1: y, x2: x, y2: y };
             drawAngleCanvas();
@@ -862,72 +609,80 @@
         function onPointerMove(e) {
             if (!drawing) return;
             e.preventDefault();
-            let { x, y } = getCanvasCoords(e);
+            let { x, y } = getPointerCoords(e);
             tempLine = { x1: startPoint.x, y1: startPoint.y, x2: x, y2: y };
             drawAngleCanvas();
         }
 
-        function onPointerEnd(e) {
+        function onPointerUp(e) {
             if (!drawing) return;
             e.preventDefault();
-            let { x, y } = getCanvasCoords(e);
-            let p1 = startPoint, p2 = { x, y };
-            let stretched = getStretchedLine(p1, p2, ANGLE_PAD + 6);
-            setRightAngleFromLine(stretched.start, stretched.end);
-            tempLine = null;
-            drawing = false;
-            startPoint = null;
+            angleCanvas.releasePointerCapture(e.pointerId);
+            let { x, y } = getPointerCoords(e);
+            tempLine = { x1: startPoint.x, y1: startPoint.y, x2: x, y2: y };
             drawAngleCanvas();
-            resetHint();
+
+            if (autoFixTimer) clearTimeout(autoFixTimer);
+            autoFixTimer = setTimeout(() => {
+                if (tempLine) {
+                    let p1 = { x: tempLine.x1, y: tempLine.y1 };
+                    let p2 = { x: tempLine.x2, y: tempLine.y2 };
+                    let stretched = getStretchedLine(p1, p2, ANGLE_PAD + 6);
+                    setRightAngleFromLine(stretched.start, stretched.end);
+                    tempLine = null;
+                    drawAngleCanvas();
+                    resetHint();
+                }
+                drawing = false;
+                startPoint = null;
+                autoFixTimer = null;
+            }, 150);
         }
 
-        // 注册事件（同时支持鼠标和触摸）
-        angleCanvas.addEventListener('mousedown', onPointerStart);
-        window.addEventListener('mousemove', onPointerMove);
-        window.addEventListener('mouseup', onPointerEnd);
-        angleCanvas.addEventListener('touchstart', onPointerStart);
-        window.addEventListener('touchmove', onPointerMove, { passive: false });
-        window.addEventListener('touchend', onPointerEnd);
-        window.addEventListener('touchcancel', onPointerEnd); // 确保取消时也结束
+        // 为角度画布注册事件
+        angleCanvas.addEventListener('pointerdown', onPointerDown);
+        angleCanvas.addEventListener('pointermove', onPointerMove);
+        angleCanvas.addEventListener('pointerup', onPointerUp);
+        // 曲线画布也需要阻止默认触摸行为，防止页面滚动时意外刷新曲线
+        curveCanvas.addEventListener('pointerdown', (e) => e.preventDefault());
+        curveCanvas.addEventListener('touchstart', (e) => e.preventDefault(), { passive: false });
+
+        // 清除绘图状态的辅助函数
+        function clearDrawingState() {
+            if (autoFixTimer) clearTimeout(autoFixTimer);
+            drawing = false;
+            tempLine = null;
+            startPoint = null;
+            drawAngleCanvas();
+        }
 
         // 按钮事件
-        document.getElementById('angleStep1M').addEventListener('click', () => { rightAngle = (rightAngle - 1 + 360) % 360; drawAngleCanvas(); resetHint(); });
-        document.getElementById('angleStep5M').addEventListener('click', () => { rightAngle = (rightAngle - 5 + 360) % 360; drawAngleCanvas(); resetHint(); });
-        document.getElementById('angleStep10M').addEventListener('click', () => { rightAngle = (rightAngle - 10 + 360) % 360; drawAngleCanvas(); resetHint(); });
-        document.getElementById('angleStep20M').addEventListener('click', () => { rightAngle = (rightAngle - 20 + 360) % 360; drawAngleCanvas(); resetHint(); });
-        document.getElementById('angleStep1P').addEventListener('click', () => { rightAngle = (rightAngle + 1) % 360; drawAngleCanvas(); resetHint(); });
-        document.getElementById('angleStep5P').addEventListener('click', () => { rightAngle = (rightAngle + 5) % 360; drawAngleCanvas(); resetHint(); });
-        document.getElementById('angleStep10P').addEventListener('click', () => { rightAngle = (rightAngle + 10) % 360; drawAngleCanvas(); resetHint(); });
-        document.getElementById('angleStep20P').addEventListener('click', () => { rightAngle = (rightAngle + 20) % 360; drawAngleCanvas(); resetHint(); });
-        document.getElementById('resetCurveBtn').addEventListener('click', () => { resetCurve(); resetHint(); });
+        document.getElementById('angleStep1M').addEventListener('click', () => { clearDrawingState(); rightAngle = (rightAngle - 1 + 360) % 360; drawAngleCanvas(); resetHint(); });
+        document.getElementById('angleStep5M').addEventListener('click', () => { clearDrawingState(); rightAngle = (rightAngle - 5 + 360) % 360; drawAngleCanvas(); resetHint(); });
+        document.getElementById('angleStep10M').addEventListener('click', () => { clearDrawingState(); rightAngle = (rightAngle - 10 + 360) % 360; drawAngleCanvas(); resetHint(); });
+        document.getElementById('angleStep20M').addEventListener('click', () => { clearDrawingState(); rightAngle = (rightAngle - 20 + 360) % 360; drawAngleCanvas(); resetHint(); });
+        document.getElementById('angleStep1P').addEventListener('click', () => { clearDrawingState(); rightAngle = (rightAngle + 1) % 360; drawAngleCanvas(); resetHint(); });
+        document.getElementById('angleStep5P').addEventListener('click', () => { clearDrawingState(); rightAngle = (rightAngle + 5) % 360; drawAngleCanvas(); resetHint(); });
+        document.getElementById('angleStep10P').addEventListener('click', () => { clearDrawingState(); rightAngle = (rightAngle + 10) % 360; drawAngleCanvas(); resetHint(); });
+        document.getElementById('angleStep20P').addEventListener('click', () => { clearDrawingState(); rightAngle = (rightAngle + 20) % 360; drawAngleCanvas(); resetHint(); });
+        document.getElementById('resetCurveBtn').addEventListener('click', () => { clearDrawingState(); resetCurve(); resetHint(); });
         document.getElementById('submitAngleBtn').addEventListener('click', () => {
+            clearDrawingState();
             const hint = document.getElementById('angleHint');
-            let rightMod = rightAngle % 180;
-            if (rightMod < 0) rightMod += 180;
-            let diff = Math.abs(leftAngleMod - rightMod);
-            diff = Math.min(diff, 180 - diff);
+            let rightMod = rightAngle % 180; if(rightMod<0) rightMod+=180;
+            let diff = Math.abs(leftAngleMod - rightMod); diff = Math.min(diff, 180-diff);
             let leftInt = Math.round(leftAngleMod);
-            if (diff <= 5) {
-                if (diff === 0) {
-                    hint.innerText = `✓ 正确！真实角度为 ${leftInt}° (完全匹配)`;
-                    resetCurve();
-                    rightAngle = 0;
-                    drawAngleCanvas();
-                    setTimeout(() => { if (document.getElementById('slopePanel').classList.contains('active')) resetHint(); }, 1500);
-                } else {
-                    hint.innerText = `✓ 正确！真实角度为 ${leftInt}° (误差${Math.round(diff)}°)`;
-                }
-            } else {
-                hint.innerText = `✗ 错误`;
-            }
+            if(diff <= 5) {
+                if(diff === 0) { hint.innerText = `✓ 正确！真实角度为 ${leftInt}° (完全匹配)`; resetCurve(); rightAngle=0; drawAngleCanvas(); setTimeout(()=>{ if(panels.slope.classList.contains('active')) resetHint(); },1500); }
+                else hint.innerText = `✓ 正确！真实角度为 ${leftInt}° (误差${Math.round(diff)}°)`;
+            } else hint.innerText = `✗ 错误`;
         });
 
-        drawCurveAndPoints();
-        drawAngleCanvas();
+        drawCurveAndPoints(); drawAngleCanvas();
 
         window.addEventListener('resize', () => {
-            if (panels.space.classList.contains('active')) drawGridCanvas();
-            if (panels.slope.classList.contains('active')) { drawCurveAndPoints(); drawAngleCanvas(); }
+            if(panels.space.classList.contains('active')) drawGridCanvas();
+            if(panels.slope.classList.contains('active')) { drawCurveAndPoints(); drawAngleCanvas(); }
         });
     })();
 </script>
