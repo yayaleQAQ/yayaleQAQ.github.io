@@ -1,1112 +1,1238 @@
-<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes, viewport-fit=cover">
-    <title>练习</title>
-    <style>
-        * {
-            box-sizing: border-box;
-            font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
-            margin: 0;
-            padding: 0;
-            user-select: none;
-            -webkit-tap-highlight-color: transparent;
-        }
-        body {
-            background: #f2f0e9;
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 8px;
-        }
-        .app-container {
-            width: 100%;
-            max-width: 750px;
-            background: rgba(255, 255, 255, 0.75);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            border-radius: 32px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
-            padding: 12px 12px 20px;
-            border: 1px solid rgba(255,255,255,0.6);
-        }
-        .tab-bar {
-            display: flex;
-            gap: 6px;
-            margin-bottom: 16px;
-            background: #e9e2da;
-            padding: 4px;
-            border-radius: 40px;
-            flex-wrap: wrap;
-        }
-        .tab {
-            flex: 1 0 auto;
-            text-align: center;
-            padding: 8px 6px;
-            border-radius: 32px;
-            font-weight: 500;
-            color: #4a4540;
-            transition: all 0.2s;
-            cursor: pointer;
-            background: transparent;
-            border: none;
-            font-size: 0.85rem;
-            white-space: nowrap;
-        }
-        .tab.active {
-            background: white;
-            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
-            color: #1f1c19;
-        }
-        .panel {
-            display: none;
-        }
-        .panel.active {
-            display: block;
-        }
-
-        .canvas-area {
-            background: #ffffffc4;
-            border-radius: 28px;
-            padding: 12px 8px 8px;
-            box-shadow: inset 0 1px 3px rgba(0,0,0,0.02), 0 6px 14px rgba(90, 60, 40, 0.08);
-            margin-bottom: 16px;
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: center;
-            gap: 16px;
-            align-items: center;
-        }
-        .canvas-wrapper {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-        .canvas-label {
-            font-size: 0.8rem;
-            color: #5f534b;
-            margin-top: 4px;
-        }
-        canvas {
-            display: block;
-            border-radius: 20px;
-            background: white;
-            box-shadow: 0 4px 10px rgba(80, 60, 40, 0.1);
-            width: 100%;
-            height: auto;
-            border: 2px solid #fff5eb;
-            cursor: crosshair;
-            touch-action: none;
-        }
-        canvas.grid-canvas {
-            max-width: 400px;
-            aspect-ratio: 1/1;
-        }
-        canvas.curve-canvas {
-            max-width: 250px;
-            aspect-ratio: 1/1;
-        }
-        canvas.angle-canvas {
-            max-width: 150px;
-            aspect-ratio: 1/1;
-        }
-        .coord-canvas {
-            max-width: 300px;
-            aspect-ratio: 1/1;
-        }
-
-        .control-panel {
-            background: #f6f2eb;
-            border-radius: 24px;
-            padding: 12px 12px;
-            margin-top: 8px;
-        }
-        .btn-row {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 6px 5px;
-            margin-bottom: 10px;
-            align-items: center;
-            justify-content: center;
-        }
-        .btn, .btn-sm {
-            background: white;
-            border: 1px solid #dcd3ca;
-            color: #2f2a25;
-            border-radius: 40px;
-            padding: 6px 14px;
-            font-size: 0.85rem;
-            font-weight: 500;
-            cursor: pointer;
-            transition: 0.1s;
-            flex: 0 0 auto;
-        }
-        .btn:active, .btn-sm:active {
-            background: #e0d6cc;
-            transform: scale(0.96);
-        }
-        .btn-sm {
-            padding: 5px 12px;
-            font-size: 0.8rem;
-        }
-        .inline-label {
-            display: flex;
-            align-items: center;
-            gap: 5px;
-            background: #e9dfd5;
-            padding: 3px 10px;
-            border-radius: 30px;
-            font-size: 0.8rem;
-        }
-        .result-badge {
-            background: #dccfc2;
-            border-radius: 30px;
-            padding: 6px 14px;
-            font-weight: 480;
-            font-size: 0.9rem;
-            text-align: center;
-        }
-        .toggle-group {
-            display: flex;
-            gap: 4px;
-            background: #e4dbd2;
-            padding: 3px;
-            border-radius: 30px;
-        }
-        .toggle-option {
-            padding: 4px 12px;
-            border-radius: 30px;
-            background: transparent;
-            border: none;
-            font-size: 0.8rem;
-            cursor: pointer;
-        }
-        .toggle-option.selected {
-            background: white;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-            font-weight: 550;
-        }
-        .step-group {
-            display: flex;
-            gap: 3px;
-            background: #e4dbd2;
-            padding: 3px;
-            border-radius: 30px;
-        }
-        .step-btn {
-            background: white;
-            border: none;
-            border-radius: 30px;
-            padding: 4px 8px;
-            font-size: 0.8rem;
-            font-weight: 500;
-            cursor: pointer;
-        }
-        .angle-display {
-            background: #e9dfd5;
-            border-radius: 30px;
-            padding: 4px 12px;
-            font-weight: 600;
-            font-size: 0.9rem;
-        }
-        .external-btn-container {
-            display: flex;
-            flex-direction: column;
-            gap: 16px;
-            padding: 20px 12px;
-        }
-        .external-card {
-            background: white;
-            border-radius: 28px;
-            padding: 16px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-            text-align: center;
-        }
-        .external-title {
-            font-size: 1rem;
-            font-weight: 600;
-            margin-bottom: 12px;
-            color: #2e2a28;
-        }
-        .btn-external {
-            background: #4a6fa5;
-            color: white;
-            border: none;
-            border-radius: 60px;
-            padding: 12px 24px;
-            font-size: 1rem;
-            font-weight: 500;
-            cursor: pointer;
-            transition: 0.2s;
-            width: 80%;
-            max-width: 240px;
-            margin: 0 auto;
-            display: block;
-        }
-        .btn-external:active {
-            transform: scale(0.97);
-        }
-
-        /* 坐标模块特有 */
-        .shape-select-row {
-            display: flex;
-            gap: 4px;
-            overflow-x: auto;
-            padding-bottom: 4px;
-            -webkit-overflow-scrolling: touch;
-        }
-        .shape-chip {
-            background: white;
-            border: 1px solid #d4c9bf;
-            padding: 4px 12px;
-            border-radius: 30px;
-            font-size: 0.8rem;
-            white-space: nowrap;
-            cursor: pointer;
-        }
-        .shape-chip.active {
-            background: #4a6fa5;
-            border-color: #2c4a6e;
-            color: white;
-        }
-        .error-stat {
-            display: flex;
-            justify-content: space-around;
-            background: #e9dfd5;
-            border-radius: 30px;
-            padding: 6px 8px;
-            font-size: 0.8rem;
-        }
-        .toggle-btn.active {
-            background: #4a6fa5;
-            border-color: #2c4a6e;
-            color: white;
-        }
-    </style>
-</head>
-<body>
-<div class="app-container">
-    <div class="tab-bar">
-        <button class="tab active" data-tab="space">◫ 空间比例</button>
-        <button class="tab" data-tab="slope">📐 曲线斜率</button>
-        <button class="tab" data-tab="coord">📍 坐标比例</button>
-        <button class="tab" data-tab="external">🌐 外部练习</button>
-    </div>
-
-    <!-- 空间比例面板 (原有，完全不变) -->
-    <div id="spacePanel" class="panel active">
-        <div class="canvas-area">
-            <canvas id="gridCanvas" class="grid-canvas" width="400" height="400"></canvas>
-        </div>
-        <div class="control-panel">
-            <div class="btn-row">
-                <button class="btn" id="newGridBtn">✨ 新格子·点</button>
-                <button class="btn" id="undoAuxBtn">↩ 撤销</button>
-                <button class="btn" id="clearMarkBtn">🗑 清除所有标记</button>
-                <div class="inline-label">
-                    <span>透明度</span>
-                    <input type="range" id="lineAlphaSlider" min="0" max="1" step="0.05" value="0.7">
-                </div>
-                <button class="btn-sm" id="toggleAuxBtn">👁 隐藏辅助线</button>
-            </div>
-            <div class="btn-row">
-                <div class="toggle-group" id="orientationToggle">
-                    <button class="toggle-option selected" data-orient="horizontal">⬌ 横线</button>
-                    <button class="toggle-option" data-orient="vertical">⬍ 纵线</button>
-                </div>
-                <div class="toggle-group" id="sideButtons">
-                    <button class="toggle-option selected" data-side="up">▼ 下/左</button>
-                    <button class="toggle-option" data-side="down">▲ 上/右</button>
-                </div>
-                <button class="btn" id="addLineBtn">➕ 添加 ½ 辅助线</button>
-            </div>
-            <div class="result-badge" style="background: #e0d5ca; font-size:0.8rem;">
-                💡 点击格子添加蓝色标记点（可多个）
-            </div>
-        </div>
-    </div>
-
-    <!-- 斜率匹配面板 (原有，完全不变) -->
-    <div id="slopePanel" class="panel">
-        <div class="canvas-area">
-            <div class="canvas-wrapper"><canvas id="curveCanvas" class="curve-canvas" width="250" height="250"></canvas><div class="canvas-label">曲线两点 (目测斜率)</div></div>
-            <div class="canvas-wrapper"><canvas id="angleCanvas" class="angle-canvas" width="150" height="150"></canvas><div class="canvas-label">手动画线 / 按钮调节</div></div>
-        </div>
-        <div class="control-panel">
-            <div class="btn-row">
-                <div class="step-group">
-                    <button class="step-btn" id="angleStep1M">−1°</button>
-                    <button class="step-btn" id="angleStep5M">−5°</button>
-                    <button class="step-btn" id="angleStep10M">−10°</button>
-                    <button class="step-btn" id="angleStep20M">−20°</button>
-                </div>
-            </div>
-            <div class="btn-row">
-                <div class="step-group">
-                    <button class="step-btn" id="angleStep1P">+1°</button>
-                    <button class="step-btn" id="angleStep5P">+5°</button>
-                    <button class="step-btn" id="angleStep10P">+10°</button>
-                    <button class="step-btn" id="angleStep20P">+20°</button>
-                </div>
-            </div>
-            <div class="btn-row" style="justify-content: center; gap: 10px;">
-                <span class="angle-display" id="angleDisplay">0°</span>
-                <button class="btn" id="submitAngleBtn">✓ 提交</button>
-                <button class="btn" id="resetCurveBtn">↺ 新曲线</button>
-            </div>
-            <div class="result-badge" id="angleHint">↝ 可手动画线或使用按钮</div>
-        </div>
-    </div>
-
-    <!-- 坐标比例面板 (仅修改绘制函数，其他完全保留) -->
-    <div id="coordPanel" class="panel">
-        <div class="canvas-area">
-            <div class="canvas-wrapper">
-                <canvas id="coordRefCanvas" class="coord-canvas" width="300" height="300"></canvas>
-                <div class="canvas-label">📐 参考形状 (正方形框内)</div>
-            </div>
-            <div class="canvas-wrapper">
-                <canvas id="coordWorkCanvas" class="coord-canvas" width="300" height="300"></canvas>
-                <div class="canvas-label">✏️ 你的点位 (点击/拖动)</div>
-            </div>
-        </div>
-        <div class="control-panel">
-            <div class="shape-select-row" id="shapeChipsContainer"></div>
-            <div class="btn-row">
-                <button class="btn-sm" id="coordNewShapeBtn">🔄 随机新图形</button>
-                <button class="btn-sm" id="coordUndoBtn">↩ 撤销</button>
-                <button class="btn-sm" id="coordClearMarksBtn">🗑 清空点位</button>
-            </div>
-            <div class="btn-row">
-                <button class="btn-sm toggle-btn" id="coordToggleAnswer">👁️ 显示答案</button>
-                <button class="btn-sm toggle-btn active" id="coordToggleLines">🔗 连线</button>
-                <button class="btn-sm toggle-btn active" id="coordToggleGrid">📏 网格</button>
-            </div>
-            <div class="error-stat">
-                <span>📊 平均偏差: <strong id="coordAvgError">0.0</strong>%</span>
-                <span>🎯 最大偏差: <strong id="coordMaxError">0.0</strong>%</span>
-                <span id="coordPointCount">0/0</span>
-            </div>
-            <div class="result-badge" style="margin-top:8px; font-size:0.8rem;">
-                💡 观察参考点位置(比例) → 在右侧按顺序打点
-            </div>
-        </div>
-    </div>
-
-    <!-- 外部练习面板 (原有，完全不变) -->
-    <div id="externalPanel" class="panel">
-        <div class="external-btn-container">
-            <div class="external-card">
-                <div class="external-title">🎨 色感训练 (HSB)</div>
-                <button class="btn-external" data-url="https://li-xiao-jia.github.io/tools/1_hsb-trainer.html">打开练习</button>
-            </div>
-            <div class="external-card">
-                <div class="external-title">📐 透视练习 (3D模型)</div>
-                <button class="btn-external" data-url="https://sketchfab.com/3d-models/c4b168bff6de4327968daa2283846044">打开练习</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<script>
-    (function() {
-        // ========== 全局标签切换 ==========
-        const tabs = document.querySelectorAll('.tab');
-        const panels = {
-            space: document.getElementById('spacePanel'),
-            slope: document.getElementById('slopePanel'),
-            coord: document.getElementById('coordPanel'),
-            external: document.getElementById('externalPanel')
-        };
-        tabs.forEach(tab => {
-            tab.addEventListener('click', () => {
-                tabs.forEach(t => t.classList.remove('active'));
-                tab.classList.add('active');
-                const target = tab.dataset.tab;
-                Object.values(panels).forEach(p => p.classList.remove('active'));
-                panels[target].classList.add('active');
-                if (target === 'space') drawGridCanvas();
-                else if (target === 'slope') {
-                    document.getElementById('angleHint').innerText = '↝ 可手动画线或使用按钮';
-                    updateAngleDisplay();
-                    drawCurveAndPoints();
-                    drawAngleCanvas();
-                } else if (target === 'coord') {
-                    resizeCoordCanvases();
-                    drawCoordRef();
-                    drawCoordWork();
-                }
-            });
-        });
-
-        // 外部练习跳转
-        document.querySelectorAll('.btn-external').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const url = btn.getAttribute('data-url');
-                if (url) window.open(url, '_blank');
-            });
-        });
-
-        // ---------- 原有空间比例模块 (完全不变) ----------
-        const gridCanvas = document.getElementById('gridCanvas');
-        const ctxGrid = gridCanvas.getContext('2d');
-        const SIZE = 400;
-        let gridLeft = 20, gridTop = 20, gridRight = 380, gridBottom = 380;
-        let gridWidth = 360, gridHeight = 360;
-        let gridPoint = { x: 0.5, y: 0.5 };
-        let userMarks = [];
-        let hLines = [], vLines = [], curH = null, curV = null, history = [], shortLines = [];
-        let showAux = true, alpha = 0.7;
-        let currentOrient = 'horizontal', currentSide = 'up';
-        function getLineColor() { return '#FF3B3B'; }
-        function randomGridSize() {
-            const minSize = 220, maxSize = 400;
-            gridWidth = Math.floor(Math.random() * (maxSize - minSize + 1)) + minSize;
-            gridHeight = Math.floor(Math.random() * (maxSize - minSize + 1)) + minSize;
-            gridLeft = (SIZE - gridWidth) / 2;
-            gridTop = (SIZE - gridHeight) / 2;
-            gridRight = gridLeft + gridWidth;
-            gridBottom = gridTop + gridHeight;
-        }
-        function generateShortLines() {
-            const area = gridWidth * gridHeight;
-            let count = Math.floor(area / 600);
-            count = Math.max(12, Math.min(35, count));
-            shortLines = [];
-            for (let i = 0; i < count; i++) {
-                let x1 = gridLeft + Math.random() * gridWidth;
-                let y1 = gridTop + Math.random() * gridHeight;
-                let angle = Math.random() * 2 * Math.PI;
-                let maxLen = Math.min(gridWidth, gridHeight) * 0.4;
-                let minLen = 25;
-                let length = minLen + Math.random() * (maxLen - minLen);
-                let dx = length * Math.cos(angle), dy = length * Math.sin(angle);
-                let x2 = x1 + dx, y2 = y1 + dy;
-                if (x2 < gridLeft || x2 > gridRight || y2 < gridTop || y2 > gridBottom) {
-                    x2 = x1 - dx; y2 = y1 - dy;
-                    if (x2 < gridLeft || x2 > gridRight || y2 < gridTop || y2 > gridBottom) continue;
-                }
-                shortLines.push({ x1, y1, x2, y2, width: 2 + Math.floor(Math.random() * 3) });
-            }
-        }
-        function randomPoint() { return { x: 0.1 + Math.random() * 0.8, y: 0.1 + Math.random() * 0.8 }; }
-        function newGrid() {
-            randomGridSize(); generateShortLines();
-            gridPoint = randomPoint();
-            userMarks = []; hLines = []; vLines = []; curH = null; curV = null; history = [];
-            drawGridCanvas();
-        }
-        document.getElementById('newGridBtn').addEventListener('click', newGrid);
-        document.getElementById('undoAuxBtn').addEventListener('click', () => {
-            if (history.length === 0) return;
-            let last = history.pop();
-            hLines = [...last.hLines]; vLines = [...last.vLines];
-            curH = last.curH; curV = last.curV;
-            userMarks = last.userMarks.map(p => ({ ...p }));
-            drawGridCanvas();
-        });
-        document.getElementById('clearMarkBtn').addEventListener('click', () => { userMarks = []; drawGridCanvas(); });
-        function addAuxLine() {
-            let type = currentOrient, side = currentSide;
-            history.push({ hLines: [...hLines], vLines: [...vLines], curH, curV, userMarks: userMarks.map(p=>({...p})) });
-            if (type === 'horizontal') {
-                if (curH === null) curH = (side === 'up') ? 0 + 0.5 : 1 - 0.5;
-                else {
-                    if (side === 'up') {
-                        let candidates = hLines.filter(y => y > curH); candidates.push(1);
-                        let nearest = Math.min(...candidates);
-                        curH = curH + (nearest - curH) * 0.5;
-                    } else {
-                        let candidates = hLines.filter(y => y < curH); candidates.push(0);
-                        let nearest = Math.max(...candidates);
-                        curH = curH - (curH - nearest) * 0.5;
-                    }
-                }
-                hLines.push(curH);
-            } else {
-                if (curV === null) curV = (side === 'up') ? 1 - 0.5 : 0 + 0.5;
-                else {
-                    if (side === 'up') {
-                        let candidates = vLines.filter(x => x < curV); candidates.push(0);
-                        let nearest = Math.max(...candidates);
-                        curV = curV - (curV - nearest) * 0.5;
-                    } else {
-                        let candidates = vLines.filter(x => x > curV); candidates.push(1);
-                        let nearest = Math.min(...candidates);
-                        curV = curV + (nearest - curV) * 0.5;
-                    }
-                }
-                vLines.push(curV);
-            }
-            drawGridCanvas();
-        }
-        document.getElementById('addLineBtn').addEventListener('click', addAuxLine);
-        document.querySelectorAll('[data-orient]').forEach(btn => btn.addEventListener('click', (e) => {
-            document.querySelectorAll('[data-orient]').forEach(b=>b.classList.remove('selected'));
-            e.target.classList.add('selected'); currentOrient = e.target.dataset.orient;
-        }));
-        document.querySelectorAll('[data-side]').forEach(btn => btn.addEventListener('click', (e) => {
-            document.querySelectorAll('[data-side]').forEach(b=>b.classList.remove('selected'));
-            e.target.classList.add('selected'); currentSide = e.target.dataset.side;
-        }));
-        document.getElementById('toggleAuxBtn').addEventListener('click', (e) => { showAux = !showAux; e.target.textContent = showAux ? '👁 隐藏辅助线' : '👁 显示辅助线'; drawGridCanvas(); });
-        document.getElementById('lineAlphaSlider').addEventListener('input', (e) => { alpha = parseFloat(e.target.value); drawGridCanvas(); });
-        function addMark(nx, ny) { if (nx>=0 && nx<=1 && ny>=0 && ny<=1) { userMarks.push({ x: nx, y: ny }); drawGridCanvas(); } }
-        function handleCanvasClick(e) {
-            const rect = gridCanvas.getBoundingClientRect();
-            const scaleX = gridCanvas.width / rect.width, scaleY = gridCanvas.height / rect.height;
-            let clientX, clientY;
-            if (e.touches) { clientX = e.touches[0].clientX; clientY = e.touches[0].clientY; e.preventDefault(); }
-            else { clientX = e.clientX; clientY = e.clientY; }
-            let canvasX = (clientX - rect.left) * scaleX, canvasY = (clientY - rect.top) * scaleY;
-            canvasX = Math.min(Math.max(canvasX, 0), SIZE); canvasY = Math.min(Math.max(canvasY, 0), SIZE);
-            let nx = (canvasX - gridLeft) / gridWidth, ny = (canvasY - gridTop) / gridHeight;
-            addMark(nx, ny);
-        }
-        gridCanvas.addEventListener('click', handleCanvasClick);
-        gridCanvas.addEventListener('touchstart', (e) => { e.preventDefault(); handleCanvasClick(e); });
-        function drawGridCanvas() {
-            ctxGrid.clearRect(0, 0, SIZE, SIZE);
-            ctxGrid.strokeStyle = '#2c3e4f'; ctxGrid.lineWidth = 3; ctxGrid.strokeRect(gridLeft, gridTop, gridWidth, gridHeight);
-            shortLines.forEach(line => { ctxGrid.strokeStyle = 'rgba(100,100,100,0.4)'; ctxGrid.lineWidth = line.width; ctxGrid.beginPath(); ctxGrid.moveTo(line.x1, line.y1); ctxGrid.lineTo(line.x2, line.y2); ctxGrid.stroke(); });
-            if (showAux) {
-                ctxGrid.lineWidth = 3;
-                hLines.forEach(y => { ctxGrid.globalAlpha = alpha; ctxGrid.strokeStyle = getLineColor(); let yPos = gridTop + y * gridHeight; ctxGrid.beginPath(); ctxGrid.moveTo(gridLeft, yPos); ctxGrid.lineTo(gridRight, yPos); ctxGrid.stroke(); });
-                vLines.forEach(x => { ctxGrid.globalAlpha = alpha; ctxGrid.strokeStyle = getLineColor(); let xPos = gridLeft + x * gridWidth; ctxGrid.beginPath(); ctxGrid.moveTo(xPos, gridTop); ctxGrid.lineTo(xPos, gridBottom); ctxGrid.stroke(); });
-                ctxGrid.globalAlpha = 1;
-            }
-            const px = gridLeft + gridPoint.x * gridWidth, py = gridTop + gridPoint.y * gridHeight;
-            ctxGrid.beginPath(); ctxGrid.fillStyle = '#c44b3c'; ctxGrid.shadowColor = '#b33a2a'; ctxGrid.shadowBlur = 8; ctxGrid.arc(px, py, 2, 0, 2*Math.PI); ctxGrid.fill();
-            userMarks.forEach(mark => { const mx = gridLeft + mark.x * gridWidth, my = gridTop + mark.y * gridHeight;
-                ctxGrid.beginPath(); ctxGrid.fillStyle = 'rgba(30,144,255,0.5)'; ctxGrid.arc(mx, my, 5, 0, 2*Math.PI); ctxGrid.fill();
-                ctxGrid.beginPath(); ctxGrid.strokeStyle = '#1E90FF'; ctxGrid.lineWidth = 1.5; ctxGrid.arc(mx, my, 5, 0, 2*Math.PI); ctxGrid.stroke();
-            });
-            ctxGrid.shadowBlur = 0;
-        }
-        newGrid();
-
-        // ---------- 原有斜率模块 (完全不变) ----------
-        const curveCanvas = document.getElementById('curveCanvas');
-        const angleCanvas = document.getElementById('angleCanvas');
-        const ctxCurve = curveCanvas.getContext('2d');
-        const ctxAngle = angleCanvas.getContext('2d');
-        const CURVE_SIZE = 250, ANGLE_SIZE = 150;
-        const CURVE_PAD = 15, ANGLE_PAD = 10;
-        const MIN_POINT_DIST = 80;
-        let curvePath = [], pointA = null, pointB = null, leftAngleMod = 0, rightAngle = 0;
-        let drawing = false;
-        let startPoint = null;
-        let tempLine = null;
-        let autoFixTimer = null;
-        const defaultHint = '↝ 可手动画线或使用按钮';
-
-        function catmullRom(p0,p1,p2,p3,t) { let t2=t*t,t3=t2*t; return 0.5*((2*p1)+(-p0+p2)*t+(2*p0-5*p1+4*p2-p3)*t2+(-p0+3*p1-3*p2+p3)*t3); }
-        function generateRandomCurve() {
-            for(let a=0;a<30;a++) {
-                const w = CURVE_SIZE-2*CURVE_PAD, h = CURVE_SIZE-2*CURVE_PAD;
-                const num = 3+Math.floor(Math.random()*4);
-                let pts = [];
-                for(let i=0;i<num;i++) pts.push({ x: CURVE_PAD+Math.random()*w, y: CURVE_PAD+Math.random()*h });
-                let curve = [];
-                for(let i=0;i<pts.length-1;i++) {
-                    let p0=pts[Math.max(0,i-1)],p1=pts[i],p2=pts[i+1],p3=pts[Math.min(pts.length-1,i+2)];
-                    for(let t=0;t<=50;t++) { let t2=t/50; let x=catmullRom(p0.x,p1.x,p2.x,p3.x,t2), y=catmullRom(p0.y,p1.y,p2.y,p3.y,t2);
-                        x=Math.min(Math.max(x,CURVE_PAD),CURVE_SIZE-CURVE_PAD); y=Math.min(Math.max(y,CURVE_PAD),CURVE_SIZE-CURVE_PAD);
-                        curve.push({x,y});
-                    }
-                }
-                let unique=[];
-                for(let i=0;i<curve.length;i++) if(i===0||Math.hypot(curve[i].x-curve[i-1].x,curve[i].y-curve[i-1].y)>1) unique.push(curve[i]);
-                if(unique.every(p=>p.x>=CURVE_PAD&&p.x<=CURVE_SIZE-CURVE_PAD&&p.y>=CURVE_PAD&&p.y<=CURVE_SIZE-CURVE_PAD)&&unique.length>10) return unique;
-            }
-            return [{x:CURVE_PAD,y:CURVE_SIZE/2},{x:CURVE_SIZE-CURVE_PAD,y:CURVE_SIZE/2}];
-        }
-        function pickTwoPointsOnCurve(curve) {
-            if(curve.length<10) return {a:curve[0],b:curve[curve.length-1]};
-            for(let i=0;i<300;i++) {
-                let i1=Math.floor(Math.random()*curve.length), i2=Math.floor(Math.random()*curve.length);
-                if(Math.abs(i1-i2)<curve.length*0.25) continue;
-                let p1=curve[i1],p2=curve[i2];
-                if(Math.hypot(p1.x-p2.x,p1.y-p2.y)>MIN_POINT_DIST) return {a:p1,b:p2};
-            }
-            let maxD=0,best={a:curve[0],b:curve[curve.length-1]};
-            for(let i=0;i<Math.min(curve.length,50);i++) for(let j=i+1;j<Math.min(curve.length,50);j++) { let d=Math.hypot(curve[i].x-curve[j].x,curve[i].y-curve[j].y); if(d>maxD) { maxD=d; best={a:curve[i],b:curve[j]}; } }
-            return best;
-        }
-        function getAngleMod180(p1,p2) { let dx=p2.x-p1.x,dy=p2.y-p1.y; let deg=Math.atan2(dy,dx)*180/Math.PI; if(deg<0) deg+=360; let mod=deg%180; if(mod<0) mod+=180; return mod; }
-        function drawCurveAndPoints() {
-            curvePath = generateRandomCurve();
-            let {a,b} = pickTwoPointsOnCurve(curvePath);
-            pointA=a; pointB=b; leftAngleMod=getAngleMod180(pointA,pointB);
-            ctxCurve.clearRect(0,0,CURVE_SIZE,CURVE_SIZE);
-            ctxCurve.strokeStyle='#333'; ctxCurve.lineWidth=2; ctxCurve.strokeRect(CURVE_PAD,CURVE_PAD,CURVE_SIZE-2*CURVE_PAD,CURVE_SIZE-2*CURVE_PAD);
-            ctxCurve.beginPath(); ctxCurve.moveTo(curvePath[0].x,curvePath[0].y);
-            for(let i=1;i<curvePath.length;i++) ctxCurve.lineTo(curvePath[i].x,curvePath[i].y);
-            ctxCurve.strokeStyle='#2c6e9e'; ctxCurve.lineWidth=3; ctxCurve.stroke();
-            ctxCurve.fillStyle='#c44b3c'; ctxCurve.beginPath(); ctxCurve.arc(pointA.x,pointA.y,2.5,0,2*Math.PI); ctxCurve.fill();
-            ctxCurve.beginPath(); ctxCurve.arc(pointB.x,pointB.y,2.5,0,2*Math.PI); ctxCurve.fill();
-        }
-        function getStretchedLine(p1,p2,pad) {
-            const left=pad, right=ANGLE_SIZE-pad, top=pad, bottom=ANGLE_SIZE-pad;
-            let dx=p2.x-p1.x, dy=p2.y-p1.y;
-            if(dx===0 && dy===0) return {start:p1,end:p2};
-            let tMin=-Infinity, tMax=Infinity;
-            if(dx!==0) { let t1=(left-p1.x)/dx, t2=(right-p1.x)/dx; if(t1>t2)[t1,t2]=[t2,t1]; tMin=Math.max(tMin,t1); tMax=Math.min(tMax,t2); } else if(p1.x<left||p1.x>right) return {start:p1,end:p2};
-            if(dy!==0) { let t1=(top-p1.y)/dy, t2=(bottom-p1.y)/dy; if(t1>t2)[t1,t2]=[t2,t1]; tMin=Math.max(tMin,t1); tMax=Math.min(tMax,t2); } else if(p1.y<top||p1.y>bottom) return {start:p1,end:p2};
-            if(tMin>tMax) return {start:p1,end:p2};
-            return {start:{x:p1.x+tMin*dx,y:p1.y+tMin*dy}, end:{x:p1.x+tMax*dx,y:p1.y+tMax*dy}};
-        }
-        function setRightAngleFromLine(p1,p2) {
-            let raw=Math.atan2(p2.y-p1.y,p2.x-p1.x)*180/Math.PI; if(raw<0) raw+=360;
-            rightAngle=raw; drawAngleCanvas();
-        }
-        function drawAngleCanvas() {
-            ctxAngle.clearRect(0,0,ANGLE_SIZE,ANGLE_SIZE);
-            ctxAngle.strokeStyle='#333'; ctxAngle.lineWidth=2; ctxAngle.strokeRect(ANGLE_PAD,ANGLE_PAD,ANGLE_SIZE-2*ANGLE_PAD,ANGLE_SIZE-2*ANGLE_PAD);
-            let cx=ANGLE_SIZE/2, cy=ANGLE_SIZE/2, rad=rightAngle*Math.PI/180;
-            let left=ANGLE_PAD+6, right=ANGLE_SIZE-ANGLE_PAD-6, top=ANGLE_PAD+6, bottom=ANGLE_SIZE-ANGLE_PAD-6;
-            let inters=[];
-            if(Math.cos(rad)!==0) {
-                let t=(left-cx)/Math.cos(rad), y=cy+t*Math.sin(rad); if(y>=top&&y<=bottom) inters.push({x:left,y,t});
-                t=(right-cx)/Math.cos(rad); y=cy+t*Math.sin(rad); if(y>=top&&y<=bottom) inters.push({x:right,y,t});
-            }
-            if(Math.sin(rad)!==0) {
-                let t=(top-cy)/Math.sin(rad), x=cx+t*Math.cos(rad); if(x>=left&&x<=right) inters.push({x,y:top,t});
-                t=(bottom-cy)/Math.sin(rad); x=cx+t*Math.cos(rad); if(x>=left&&x<=right) inters.push({x,y:bottom,t});
-            }
-            if(inters.length>=2) { inters.sort((a,b)=>a.t-b.t); ctxAngle.beginPath(); ctxAngle.strokeStyle='#000'; ctxAngle.lineWidth=3; ctxAngle.moveTo(inters[0].x,inters[0].y); ctxAngle.lineTo(inters[inters.length-1].x,inters[inters.length-1].y); ctxAngle.stroke(); }
-            if(tempLine) { ctxAngle.beginPath(); ctxAngle.setLineDash([6,8]); ctxAngle.strokeStyle='#FF8C00'; ctxAngle.lineWidth=2; ctxAngle.moveTo(tempLine.x1,tempLine.y1); ctxAngle.lineTo(tempLine.x2,tempLine.y2); ctxAngle.stroke(); ctxAngle.setLineDash([]); }
-            updateAngleDisplay();
-        }
-        function updateAngleDisplay() { let disp=rightAngle%180; if(disp<0) disp+=180; document.getElementById('angleDisplay').innerText=Math.round(disp)+'°'; }
-        function resetCurve() { drawCurveAndPoints(); }
-        function resetHint() { document.getElementById('angleHint').innerText = defaultHint; }
-
-        function getPointerCoords(e) {
-            const rect = angleCanvas.getBoundingClientRect();
-            const scaleX = angleCanvas.width / rect.width;
-            const scaleY = angleCanvas.height / rect.height;
-            let clientX = e.clientX;
-            let clientY = e.clientY;
-            let x = (clientX - rect.left) * scaleX;
-            let y = (clientY - rect.top) * scaleY;
-            x = Math.min(Math.max(x, 0), ANGLE_SIZE);
-            y = Math.min(Math.max(y, 0), ANGLE_SIZE);
-            return { x, y };
-        }
-
-        function onPointerDown(e) {
-            e.preventDefault();
-            angleCanvas.setPointerCapture(e.pointerId);
-            if (autoFixTimer) clearTimeout(autoFixTimer);
-            drawing = true;
-            let { x, y } = getPointerCoords(e);
-            startPoint = { x, y };
-            tempLine = { x1: x, y1: y, x2: x, y2: y };
-            drawAngleCanvas();
-        }
-
-        function onPointerMove(e) {
-            if (!drawing) return;
-            e.preventDefault();
-            let { x, y } = getPointerCoords(e);
-            tempLine = { x1: startPoint.x, y1: startPoint.y, x2: x, y2: y };
-            drawAngleCanvas();
-        }
-
-        function onPointerUp(e) {
-            if (!drawing) return;
-            e.preventDefault();
-            angleCanvas.releasePointerCapture(e.pointerId);
-            let { x, y } = getPointerCoords(e);
-            tempLine = { x1: startPoint.x, y1: startPoint.y, x2: x, y2: y };
-            drawAngleCanvas();
-
-            if (autoFixTimer) clearTimeout(autoFixTimer);
-            autoFixTimer = setTimeout(() => {
-                if (tempLine) {
-                    let p1 = { x: tempLine.x1, y: tempLine.y1 };
-                    let p2 = { x: tempLine.x2, y: tempLine.y2 };
-                    let stretched = getStretchedLine(p1, p2, ANGLE_PAD + 6);
-                    setRightAngleFromLine(stretched.start, stretched.end);
-                    tempLine = null;
-                    drawAngleCanvas();
-                    resetHint();
-                }
-                drawing = false;
-                startPoint = null;
-                autoFixTimer = null;
-            }, 150);
-        }
-
-        angleCanvas.addEventListener('pointerdown', onPointerDown);
-        angleCanvas.addEventListener('pointermove', onPointerMove);
-        angleCanvas.addEventListener('pointerup', onPointerUp);
-        curveCanvas.addEventListener('pointerdown', (e) => e.preventDefault());
-        curveCanvas.addEventListener('touchstart', (e) => e.preventDefault(), { passive: false });
-
-        function clearDrawingState() {
-            if (autoFixTimer) clearTimeout(autoFixTimer);
-            drawing = false;
-            tempLine = null;
-            startPoint = null;
-            drawAngleCanvas();
-        }
-
-        document.getElementById('angleStep1M').addEventListener('click', () => { clearDrawingState(); rightAngle = (rightAngle - 1 + 360) % 360; drawAngleCanvas(); resetHint(); });
-        document.getElementById('angleStep5M').addEventListener('click', () => { clearDrawingState(); rightAngle = (rightAngle - 5 + 360) % 360; drawAngleCanvas(); resetHint(); });
-        document.getElementById('angleStep10M').addEventListener('click', () => { clearDrawingState(); rightAngle = (rightAngle - 10 + 360) % 360; drawAngleCanvas(); resetHint(); });
-        document.getElementById('angleStep20M').addEventListener('click', () => { clearDrawingState(); rightAngle = (rightAngle - 20 + 360) % 360; drawAngleCanvas(); resetHint(); });
-        document.getElementById('angleStep1P').addEventListener('click', () => { clearDrawingState(); rightAngle = (rightAngle + 1) % 360; drawAngleCanvas(); resetHint(); });
-        document.getElementById('angleStep5P').addEventListener('click', () => { clearDrawingState(); rightAngle = (rightAngle + 5) % 360; drawAngleCanvas(); resetHint(); });
-        document.getElementById('angleStep10P').addEventListener('click', () => { clearDrawingState(); rightAngle = (rightAngle + 10) % 360; drawAngleCanvas(); resetHint(); });
-        document.getElementById('angleStep20P').addEventListener('click', () => { clearDrawingState(); rightAngle = (rightAngle + 20) % 360; drawAngleCanvas(); resetHint(); });
-        document.getElementById('resetCurveBtn').addEventListener('click', () => { clearDrawingState(); resetCurve(); resetHint(); });
-        document.getElementById('submitAngleBtn').addEventListener('click', () => {
-            clearDrawingState();
-            const hint = document.getElementById('angleHint');
-            let rightMod = rightAngle % 180; if(rightMod<0) rightMod+=180;
-            let diff = Math.abs(leftAngleMod - rightMod); diff = Math.min(diff, 180-diff);
-            let leftInt = Math.round(leftAngleMod);
-            if(diff <= 5) {
-                if(diff === 0) { hint.innerText = `✓ 正确！真实角度为 ${leftInt}° (完全匹配)`; resetCurve(); rightAngle=0; drawAngleCanvas(); setTimeout(()=>{ if(panels.slope.classList.contains('active')) resetHint(); },1500); }
-                else hint.innerText = `✓ 正确！真实角度为 ${leftInt}° (误差${Math.round(diff)}°)`;
-            } else hint.innerText = `✗ 错误`;
-        });
-
-        drawCurveAndPoints(); drawAngleCanvas();
-
-        // ========== 坐标比例模块 (仅修正绘制顺序和答案序号颜色) ==========
-        (function initCoordModule() {
-            const refCanvas = document.getElementById('coordRefCanvas');
-            const workCanvas = document.getElementById('coordWorkCanvas');
-            const refCtx = refCanvas.getContext('2d');
-            const workCtx = workCanvas.getContext('2d');
-            
-            const BASE_SHAPES = {
-                triangle: { name:'🔺三角形', points:[{x:0.5,y:0.15},{x:0.2,y:0.8},{x:0.8,y:0.8}], closed:true },
-                rect: { name:'▯ 矩形', points:[{x:0.2,y:0.2},{x:0.8,y:0.2},{x:0.8,y:0.8},{x:0.2,y:0.8}], closed:true },
-                pentagon: { name:'⬟ 五边形', points:[{x:0.5,y:0.1},{x:0.85,y:0.35},{x:0.7,y:0.85},{x:0.3,y:0.85},{x:0.15,y:0.35}], closed:true },
-                hexagon: { name:'⬡ 六边形', points:[{x:0.5,y:0.1},{x:0.8,y:0.3},{x:0.8,y:0.7},{x:0.5,y:0.9},{x:0.2,y:0.7},{x:0.2,y:0.3}], closed:true },
-                star: { name:'★ 星形', points:[{x:0.5,y:0.05},{x:0.6,y:0.35},{x:0.9,y:0.4},{x:0.65,y:0.6},{x:0.75,y:0.9},{x:0.5,y:0.75},{x:0.25,y:0.9},{x:0.35,y:0.6},{x:0.1,y:0.4},{x:0.4,y:0.35}], closed:true },
-                house: { name:'🏠 房子', points:[{x:0.5,y:0.1},{x:0.85,y:0.4},{x:0.85,y:0.8},{x:0.15,y:0.8},{x:0.15,y:0.4},{x:0.5,y:0.1}], closed:true },
-                fish: { name:'🐟 鱼', points:[{x:0.7,y:0.5},{x:0.4,y:0.2},{x:0.1,y:0.3},{x:0.05,y:0.5},{x:0.2,y:0.65},{x:0.05,y:0.8},{x:0.3,y:0.7},{x:0.5,y:0.75},{x:0.7,y:0.5}], closed:true },
-                arrow: { name:'➤ 箭头', points:[{x:0.2,y:0.3},{x:0.6,y:0.3},{x:0.6,y:0.1},{x:0.9,y:0.5},{x:0.6,y:0.9},{x:0.6,y:0.7},{x:0.2,y:0.7}], closed:true }
-            };
-            const shapeKeys = Object.keys(BASE_SHAPES);
-            let currentShapeKey = 'triangle';
-            let targetPoints = [];
-            let userPoints = [];
-            
-            const BOX_RATIO = 0.85;
-            let box = { x: 0, y: 0, size: 0 };
-            
-            let showAnswer = false, showLines = true, showGrid = true;
-            let isDragging = false, dragIndex = -1;
-            
-            const avgSpan = document.getElementById('coordAvgError');
-            const maxSpan = document.getElementById('coordMaxError');
-            const countSpan = document.getElementById('coordPointCount');
-            const toggleAnswer = document.getElementById('coordToggleAnswer');
-            const toggleLines = document.getElementById('coordToggleLines');
-            const toggleGrid = document.getElementById('coordToggleGrid');
-            
-            function calcBox(w, h) {
-                const size = Math.min(w, h) * BOX_RATIO;
-                return { x: (w - size) / 2, y: (h - size) / 2, size };
-            }
-            
-            function normToPixel(nx, ny) {
-                return { x: box.x + nx * box.size, y: box.y + ny * box.size };
-            }
-            function pixelToNorm(px, py) {
-                return {
-                    x: Math.min(1, Math.max(0, (px - box.x) / box.size)),
-                    y: Math.min(1, Math.max(0, (py - box.y) / box.size))
-                };
-            }
-            
-            function generateRandomShape(baseKey) {
-                const base = BASE_SHAPES[baseKey].points;
-                const scale = 0.65 + Math.random() * 0.3;
-                const maxOffset = (1 - scale) * 0.7;
-                const offsetX = (Math.random() * 2 - 1) * maxOffset;
-                const offsetY = (Math.random() * 2 - 1) * maxOffset;
-                const jitter = 0.015 * scale;
-                return base.map(p => {
-                    let nx = p.x * scale + offsetX + (Math.random()-0.5)*jitter;
-                    let ny = p.y * scale + offsetY + (Math.random()-0.5)*jitter;
-                    return { x: Math.min(0.98, Math.max(0.02, nx)), y: Math.min(0.98, Math.max(0.02, ny)) };
-                });
-            }
-            
-            function refreshShape() {
-                targetPoints = generateRandomShape(currentShapeKey);
-                userPoints = [];
-                drawCoordRef();
-                drawCoordWork();
-                updateStats();
-            }
-            
-            function setShape(key) {
-                currentShapeKey = key;
-                refreshShape();
-                document.querySelectorAll('.shape-chip').forEach(chip => {
-                    chip.classList.toggle('active', chip.dataset.shape === key);
-                });
-            }
-            
-            function drawGridInBox(ctx) {
-                const divisions = 4;
-                ctx.save();
-                ctx.strokeStyle = '#aaaaaa';
-                ctx.lineWidth = 1.2;
-                for (let i = 1; i < divisions; i++) {
-                    const pos = box.x + (i / divisions) * box.size;
-                    ctx.beginPath();
-                    ctx.moveTo(pos, box.y);
-                    ctx.lineTo(pos, box.y + box.size);
-                    ctx.stroke();
-                    ctx.beginPath();
-                    ctx.moveTo(box.x, pos);
-                    ctx.lineTo(box.x + box.size, pos);
-                    ctx.stroke();
-                }
-                ctx.restore();
-            }
-            
-            function drawBox(ctx) {
-                ctx.save();
-                ctx.strokeStyle = '#2c3e4f';
-                ctx.lineWidth = 3.5;
-                ctx.strokeRect(box.x, box.y, box.size, box.size);
-                ctx.restore();
-            }
-            
-            // 修正后的参考画布绘制 (网格 → 形状/点 → 最后画边框)
-            function drawCoordRef() {
-                const w = refCanvas.width, h = refCanvas.height;
-                box = calcBox(w, h);
-                refCtx.clearRect(0,0,w,h);
-                refCtx.fillStyle = '#ffffff';
-                refCtx.fillRect(0,0,w,h);
-                
-                // 1. 网格 (仅在框内)
-                if(showGrid) drawGridInBox(refCtx);
-                
-                // 2. 形状与参考点
-                const pts = targetPoints.map(p => normToPixel(p.x, p.y));
-                drawShape(refCtx, pts, BASE_SHAPES[currentShapeKey].closed);
-                
-                pts.forEach((p, i) => {
-                    refCtx.beginPath();
-                    refCtx.arc(p.x, p.y, 7, 0, 2*Math.PI);
-                    refCtx.fillStyle = '#1e2b3c';
-                    refCtx.shadowColor = '#aaa';
-                    refCtx.shadowBlur = 6;
-                    refCtx.fill();
-                    refCtx.shadowBlur = 0;
-                    refCtx.strokeStyle = '#ffffff';
-                    refCtx.lineWidth = 2.5;
-                    refCtx.stroke();
-                    refCtx.font = 'bold 13px system-ui, sans-serif';
-                    refCtx.fillStyle = '#1e2b3c';
-                    refCtx.shadowColor = '#ffffff';
-                    refCtx.shadowBlur = 3;
-                    refCtx.fillText(i+1, p.x + 10, p.y - 10);
-                    refCtx.shadowBlur = 0;
-                });
-                
-                // 3. 最后绘制边框，确保不被覆盖
-                drawBox(refCtx);
-            }
-            
-            // 修正后的工作画布绘制 (网格 → 答案层/用户点/连线 → 最后画边框)
-            function drawCoordWork() {
-                const w = workCanvas.width, h = workCanvas.height;
-                box = calcBox(w, h);
-                workCtx.clearRect(0,0,w,h);
-                workCtx.fillStyle = '#ffffff';
-                workCtx.fillRect(0,0,w,h);
-                
-                // 1. 网格
-                if(showGrid) drawGridInBox(workCtx);
-                
-                // 2. 答案层 (半透明参考点) —— 文字颜色改为深色 #1e2b3c
-                if(showAnswer) {
-                    targetPoints.forEach((p, i) => {
-                        const pt = normToPixel(p.x, p.y);
-                        workCtx.beginPath();
-                        workCtx.arc(pt.x, pt.y, 6, 0, 2*Math.PI);
-                        workCtx.fillStyle = '#e05a3a';
-                        workCtx.shadowColor = '#ff8a5c';
-                        workCtx.shadowBlur = 10;
-                        workCtx.fill();
-                        workCtx.shadowBlur = 0;
-                        workCtx.strokeStyle = '#ffffff';
-                        workCtx.lineWidth = 2;
-                        workCtx.stroke();
-                        workCtx.font = 'bold 12px system-ui, sans-serif';
-                        workCtx.fillStyle = '#1e2b3c';      // 深色序号，不再用白色
-                        workCtx.shadowColor = '#ffffff';
-                        workCtx.shadowBlur = 4;
-                        workCtx.fillText(i+1, pt.x + 9, pt.y - 9);
-                        workCtx.shadowBlur = 0;
-                    });
-                }
-                
-                // 3. 用户连线
-                if(showLines && userPoints.length >= 2) {
-                    const up = userPoints.map(p => normToPixel(p.x, p.y));
-                    workCtx.beginPath();
-                    workCtx.moveTo(up[0].x, up[0].y);
-                    for(let i=1; i<up.length; i++) workCtx.lineTo(up[i].x, up[i].y);
-                    if(BASE_SHAPES[currentShapeKey].closed && userPoints.length === targetPoints.length) workCtx.closePath();
-                    workCtx.strokeStyle = '#f2c75f';
-                    workCtx.lineWidth = 3.5;
-                    workCtx.stroke();
-                }
-                
-                // 4. 用户点位
-                userPoints.forEach((p, i) => {
-                    const pt = normToPixel(p.x, p.y);
-                    workCtx.beginPath();
-                    workCtx.arc(pt.x, pt.y, 8, 0, 2*Math.PI);
-                    workCtx.fillStyle = '#f2c75f';
-                    workCtx.shadowColor = '#e0a800';
-                    workCtx.shadowBlur = 8;
-                    workCtx.fill();
-                    workCtx.shadowBlur = 0;
-                    workCtx.strokeStyle = '#1e2b3c';
-                    workCtx.lineWidth = 2.5;
-                    workCtx.stroke();
-                    workCtx.font = 'bold 13px system-ui';
-                    workCtx.fillStyle = '#1e2b3c';
-                    workCtx.fillText(i+1, pt.x + 12, pt.y - 12);
-                });
-                
-                // 5. 最后绘制边框
-                drawBox(workCtx);
-                
-                updateStats();
-            }
-            
-            function drawShape(ctx, pts, closed) {
-                ctx.beginPath();
-                ctx.moveTo(pts[0].x, pts[0].y);
-                for(let i=1;i<pts.length;i++) ctx.lineTo(pts[i].x, pts[i].y);
-                if(closed) ctx.closePath();
-                ctx.fillStyle = '#7a9fd0';
-                ctx.globalAlpha = 0.35;
-                ctx.fill();
-                ctx.globalAlpha = 1.0;
-                ctx.strokeStyle = '#4f7eb0';
-                ctx.lineWidth = 3;
-                ctx.stroke();
-            }
-            
-            function updateStats() {
-                if(userPoints.length === 0) {
-                    avgSpan.textContent = '0.0';
-                    maxSpan.textContent = '0.0';
-                    countSpan.textContent = `0/${targetPoints.length}`;
-                    return;
-                }
-                const diag = Math.sqrt(box.size**2 + box.size**2);
-                let total = 0, max = 0;
-                const len = Math.min(userPoints.length, targetPoints.length);
-                for(let i=0; i<len; i++) {
-                    const dx = (userPoints[i].x - targetPoints[i].x) * box.size;
-                    const dy = (userPoints[i].y - targetPoints[i].y) * box.size;
-                    const dist = Math.hypot(dx, dy);
-                    const err = (dist / diag) * 100;
-                    total += err;
-                    if(err > max) max = err;
-                }
-                avgSpan.textContent = (total/len).toFixed(2);
-                maxSpan.textContent = max.toFixed(2);
-                countSpan.textContent = `${userPoints.length}/${targetPoints.length}`;
-            }
-            
-            function resizeCoordCanvases() {
-                drawCoordRef();
-                drawCoordWork();
-            }
-            
-            function handleWorkPointer(e, isDown, isMove) {
-                e.preventDefault();
-                const rect = workCanvas.getBoundingClientRect();
-                const scaleX = workCanvas.width / rect.width;
-                const scaleY = workCanvas.height / rect.height;
-                let cx, cy;
-                if(e.touches) { cx = e.touches[0].clientX; cy = e.touches[0].clientY; }
-                else { cx = e.clientX; cy = e.clientY; }
-                const canvasX = (cx - rect.left) * scaleX;
-                const canvasY = (cy - rect.top) * scaleY;
-                const norm = pixelToNorm(canvasX, canvasY);
-                
-                if(isDown) {
-                    const threshold = 30;
-                    let hit = -1;
-                    userPoints.forEach((p, i) => {
-                        const dx = (p.x - norm.x) * box.size;
-                        const dy = (p.y - norm.y) * box.size;
-                        if(Math.hypot(dx, dy) < threshold) hit = i;
-                    });
-                    if(hit !== -1) {
-                        isDragging = true;
-                        dragIndex = hit;
-                    } else if(userPoints.length < targetPoints.length) {
-                        userPoints.push({x: norm.x, y: norm.y});
-                        drawCoordWork();
-                    }
-                } else if(isMove && isDragging) {
-                    userPoints[dragIndex] = {x: norm.x, y: norm.y};
-                    drawCoordWork();
-                } else if(!isDown && !isMove) {
-                    isDragging = false;
-                    dragIndex = -1;
-                }
-            }
-            
-            workCanvas.addEventListener('touchstart', (e) => handleWorkPointer(e, true, false), {passive: false});
-            workCanvas.addEventListener('touchmove', (e) => handleWorkPointer(e, false, true), {passive: false});
-            workCanvas.addEventListener('touchend', () => { isDragging = false; });
-            workCanvas.addEventListener('mousedown', (e) => handleWorkPointer(e, true, false));
-            workCanvas.addEventListener('mousemove', (e) => handleWorkPointer(e, false, true));
-            workCanvas.addEventListener('mouseup', () => { isDragging = false; });
-            
-            document.getElementById('coordNewShapeBtn').onclick = refreshShape;
-            document.getElementById('coordUndoBtn').onclick = () => { userPoints.pop(); drawCoordWork(); };
-            document.getElementById('coordClearMarksBtn').onclick = () => { userPoints = []; drawCoordWork(); };
-            toggleAnswer.onclick = () => { showAnswer = !showAnswer; toggleAnswer.classList.toggle('active', showAnswer); drawCoordWork(); };
-            toggleLines.onclick = () => { showLines = !showLines; toggleLines.classList.toggle('active', showLines); drawCoordWork(); };
-            toggleGrid.onclick = () => { showGrid = !showGrid; toggleGrid.classList.toggle('active', showGrid); drawCoordRef(); drawCoordWork(); };
-            
-            const container = document.getElementById('shapeChipsContainer');
-            shapeKeys.forEach(key => {
-                const chip = document.createElement('button');
-                chip.className = 'shape-chip' + (key === 'triangle' ? ' active' : '');
-                chip.dataset.shape = key;
-                chip.textContent = BASE_SHAPES[key].name;
-                chip.onclick = () => setShape(key);
-                container.appendChild(chip);
-            });
-            
-            refreshShape();
-            window.addEventListener('resize', () => {
-                if(panels.coord.classList.contains('active')) resizeCoordCanvases();
-            });
-        })();
-
-        window.addEventListener('resize', () => {
-            if(panels.space.classList.contains('active')) drawGridCanvas();
-            if(panels.slope.classList.contains('active')) { drawCurveAndPoints(); drawAngleCanvas(); }
-            if(panels.coord.classList.contains('active')) { drawCoordRef(); drawCoordWork(); }
-        });
-    })();
-</script>
-</body>
-</html>
+	<!DOCTYPE html>
+	<html lang="zh-CN">
+	<head>
+	    <meta charset="UTF-8">
+	    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes, viewport-fit=cover">
+	    <title>练习</title>
+	    <style>
+	        * {
+	            box-sizing: border-box;
+	            font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+	            margin: 0;
+	            padding: 0;
+	            user-select: none;
+	            -webkit-tap-highlight-color: transparent;
+	        }
+	        body {
+	            background: #f2f0e9;
+	            min-height: 100vh;
+	            display: flex;
+	            align-items: center;
+	            justify-content: center;
+	            padding: 8px;
+	        }
+	        .app-container {
+	            width: 100%;
+	            max-width: 750px;
+	            background: rgba(255, 255, 255, 0.75);
+	            backdrop-filter: blur(12px);
+	            -webkit-backdrop-filter: blur(12px);
+	            border-radius: 32px;
+	            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+	            padding: 12px 12px 20px;
+	            border: 1px solid rgba(255,255,255,0.6);
+	        }
+	        .tab-bar {
+	            display: flex;
+	            gap: 6px;
+	            margin-bottom: 16px;
+	            background: #e9e2da;
+	            padding: 4px;
+	            border-radius: 40px;
+	            flex-wrap: wrap;
+	        }
+	        .tab {
+	            flex: 1 0 auto;
+	            text-align: center;
+	            padding: 8px 6px;
+	            border-radius: 32px;
+	            font-weight: 500;
+	            color: #4a4540;
+	            transition: all 0.2s;
+	            cursor: pointer;
+	            background: transparent;
+	            border: none;
+	            font-size: 0.85rem;
+	            white-space: nowrap;
+	        }
+	        .tab.active {
+	            background: white;
+	            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+	            color: #1f1c19;
+	        }
+	        .panel {
+	            display: none;
+	        }
+	        .panel.active {
+	            display: block;
+	        }
+	        .canvas-area {
+	            background: #ffffffc4;
+	            border-radius: 28px;
+	            padding: 12px 8px 8px;
+	            box-shadow: inset 0 1px 3px rgba(0,0,0,0.02), 0 6px 14px rgba(90, 60, 40, 0.08);
+	            margin-bottom: 16px;
+	            display: flex;
+	            flex-wrap: wrap;
+	            justify-content: center;
+	            gap: 16px;
+	            align-items: center;
+	        }
+	        .canvas-wrapper {
+	            display: flex;
+	            flex-direction: column;
+	            align-items: center;
+	        }
+	        .canvas-label {
+	            font-size: 0.8rem;
+	            color: #5f534b;
+	            margin-top: 4px;
+	        }
+	        canvas {
+	            display: block;
+	            border-radius: 20px;
+	            background: white;
+	            box-shadow: 0 4px 10px rgba(80, 60, 40, 0.1);
+	            width: 100%;
+	            height: auto;
+	            border: 2px solid #fff5eb;
+	            cursor: crosshair;
+	            touch-action: none;
+	        }
+	        canvas.grid-canvas {
+	            max-width: 400px;
+	            aspect-ratio: 1/1;
+	        }
+	        canvas.curve-canvas {
+	            max-width: 250px;
+	            aspect-ratio: 1/1;
+	        }
+	        canvas.angle-canvas {
+	            max-width: 150px;
+	            aspect-ratio: 1/1;
+	        }
+	        .coord-canvas {
+	            max-width: 300px;
+	            aspect-ratio: 1/1;
+	        }
+	        .control-panel {
+	            background: #f6f2eb;
+	            border-radius: 24px;
+	            padding: 12px 12px;
+	            margin-top: 8px;
+	        }
+	        .btn-row {
+	            display: flex;
+	            flex-wrap: wrap;
+	            gap: 6px 5px;
+	            margin-bottom: 10px;
+	            align-items: center;
+	            justify-content: center;
+	        }
+	        .btn, .btn-sm {
+	            background: white;
+	            border: 1px solid #dcd3ca;
+	            color: #2f2a25;
+	            border-radius: 40px;
+	            padding: 6px 14px;
+	            font-size: 0.85rem;
+	            font-weight: 500;
+	            cursor: pointer;
+	            transition: 0.1s;
+	            flex: 0 0 auto;
+	        }
+	        .btn:active, .btn-sm:active {
+	            background: #e0d6cc;
+	            transform: scale(0.96);
+	        }
+	        .btn-sm {
+	            padding: 5px 12px;
+	            font-size: 0.8rem;
+	        }
+	        .inline-label {
+	            display: flex;
+	            align-items: center;
+	            gap: 5px;
+	            background: #e9dfd5;
+	            padding: 3px 10px;
+	            border-radius: 30px;
+	            font-size: 0.8rem;
+	        }
+	        .result-badge {
+	            background: #dccfc2;
+	            border-radius: 30px;
+	            padding: 6px 14px;
+	            font-weight: 480;
+	            font-size: 0.9rem;
+	            text-align: center;
+	        }
+	        .toggle-group {
+	            display: flex;
+	            gap: 4px;
+	            background: #e4dbd2;
+	            padding: 3px;
+	            border-radius: 30px;
+	        }
+	        .toggle-option {
+	            padding: 4px 12px;
+	            border-radius: 30px;
+	            background: transparent;
+	            border: none;
+	            font-size: 0.8rem;
+	            cursor: pointer;
+	        }
+	        .toggle-option.selected {
+	            background: white;
+	            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+	            font-weight: 550;
+	        }
+	        .step-group {
+	            display: flex;
+	            gap: 3px;
+	            background: #e4dbd2;
+	            padding: 3px;
+	            border-radius: 30px;
+	        }
+	        .step-btn {
+	            background: white;
+	            border: none;
+	            border-radius: 30px;
+	            padding: 4px 8px;
+	            font-size: 0.8rem;
+	            font-weight: 500;
+	            cursor: pointer;
+	        }
+	        .angle-display {
+	            background: #e9dfd5;
+	            border-radius: 30px;
+	            padding: 4px 12px;
+	            font-weight: 600;
+	            font-size: 0.9rem;
+	        }
+	        .external-btn-container {
+	            display: flex;
+	            flex-direction: column;
+	            gap: 16px;
+	            padding: 20px 12px;
+	        }
+	        .external-card {
+	            background: white;
+	            border-radius: 28px;
+	            padding: 16px;
+	            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+	            text-align: center;
+	        }
+	        .external-title {
+	            font-size: 1rem;
+	            font-weight: 600;
+	            margin-bottom: 12px;
+	            color: #2e2a28;
+	        }
+	        .btn-external {
+	            background: #4a6fa5;
+	            color: white;
+	            border: none;
+	            border-radius: 60px;
+	            padding: 12px 24px;
+	            font-size: 1rem;
+	            font-weight: 500;
+	            cursor: pointer;
+	            transition: 0.2s;
+	            width: 80%;
+	            max-width: 240px;
+	            margin: 0 auto;
+	            display: block;
+	        }
+	        .btn-external:active {
+	            transform: scale(0.97);
+	        }
+	        /* 坐标模块特有 */
+	        .shape-select-row {
+	            display: flex;
+	            gap: 4px;
+	            overflow-x: auto;
+	            padding-bottom: 4px;
+	            -webkit-overflow-scrolling: touch;
+	        }
+	        .shape-chip {
+	            background: white;
+	            border: 1px solid #d4c9bf;
+	            padding: 4px 12px;
+	            border-radius: 30px;
+	            font-size: 0.8rem;
+	            white-space: nowrap;
+	            cursor: pointer;
+	        }
+	        .shape-chip.active {
+	            background: #4a6fa5;
+	            border-color: #2c4a6e;
+	            color: white;
+	        }
+	        .error-stat {
+	            display: flex;
+	            justify-content: space-around;
+	            background: #e9dfd5;
+	            border-radius: 30px;
+	            padding: 6px 8px;
+	            font-size: 0.8rem;
+	        }
+	        .toggle-btn.active {
+	            background: #4a6fa5;
+	            border-color: #2c4a6e;
+	            color: white;
+	        }
+	    </style>
+	</head>
+	<body>
+	<div class="app-container">
+	    <div class="tab-bar">
+	        <button class="tab active" data-tab="space">◫ 空间比例</button>
+	        <button class="tab" data-tab="slope">📐 曲线斜率</button>
+	        <button class="tab" data-tab="coord">📍 坐标比例</button>
+	        <button class="tab" data-tab="external">🌐 外部练习</button>
+	    </div>
+	    <!-- 空间比例面板 (优化版) -->
+	    <div id="spacePanel" class="panel active">
+	        <div class="canvas-area">
+	            <canvas id="gridCanvas" class="grid-canvas" width="400" height="400"></canvas>
+	        </div>
+	        <div class="control-panel">
+	            <div class="btn-row">
+	                <button class="btn" id="newGridBtn">✨ 新格子·点</button>
+	                <button class="btn" id="undoAuxBtn">↩ 撤销</button>
+	                <button class="btn" id="clearMarkBtn">🗑 清除所有标记</button>
+	                <div class="inline-label">
+	                    <span>透明度</span>
+	                    <input type="range" id="lineAlphaSlider" min="0" max="1" step="0.05" value="0.7">
+	                </div>
+	                <button class="btn-sm" id="toggleAuxBtn">👁 隐藏辅助线</button>
+	            </div>
+	            <div class="btn-row">
+	                <div class="toggle-group" id="orientationToggle">
+	                    <button class="toggle-option selected" data-orient="horizontal">⬌ 横线</button>
+	                    <button class="toggle-option" data-orient="vertical">⬍ 纵线</button>
+	                </div>
+	                <div class="toggle-group" id="sideButtons">
+	                    <button class="toggle-option selected" data-side="up">▼ 下/左</button>
+	                    <button class="toggle-option" data-side="down">▲ 上/右</button>
+	                </div>
+	            </div>
+	            <div class="btn-row">
+	                <span class="inline-label">分割比</span>
+	                <div class="toggle-group" id="ratioToggle">
+	                    <button class="toggle-option selected" data-ratio="1/2">½</button>
+	                    <button class="toggle-option" data-ratio="1/3">⅓</button>
+	                    <button class="toggle-option" data-ratio="1/4">¼</button>
+	                    <button class="toggle-option" data-ratio="1/5">⅕</button>
+	                    <button class="toggle-option" data-ratio="1/6">⅙</button>
+	                </div>
+	                <button class="btn" id="addLineBtn">➕ 添加辅助线</button>
+	            </div>
+	            <div class="result-badge" style="background: #e0d5ca; font-size:0.8rem;">
+	                💡 点击格子添加蓝色标记点（可多个）
+	            </div>
+	        </div>
+	    </div>
+	    <!-- 斜率匹配面板 (完全不变) -->
+	    <div id="slopePanel" class="panel">
+	        <div class="canvas-area">
+	            <div class="canvas-wrapper"><canvas id="curveCanvas" class="curve-canvas" width="250" height="250"></canvas><div class="canvas-label">曲线两点 (目测斜率)</div></div>
+	            <div class="canvas-wrapper"><canvas id="angleCanvas" class="angle-canvas" width="150" height="150"></canvas><div class="canvas-label">手动画线 / 按钮调节</div></div>
+	        </div>
+	        <div class="control-panel">
+	            <div class="btn-row">
+	                <div class="step-group">
+	                    <button class="step-btn" id="angleStep1M">−1°</button>
+	                    <button class="step-btn" id="angleStep5M">−5°</button>
+	                    <button class="step-btn" id="angleStep10M">−10°</button>
+	                    <button class="step-btn" id="angleStep20M">−20°</button>
+	                </div>
+	            </div>
+	            <div class="btn-row">
+	                <div class="step-group">
+	                    <button class="step-btn" id="angleStep1P">+1°</button>
+	                    <button class="step-btn" id="angleStep5P">+5°</button>
+	                    <button class="step-btn" id="angleStep10P">+10°</button>
+	                    <button class="step-btn" id="angleStep20P">+20°</button>
+	                </div>
+	            </div>
+	            <div class="btn-row" style="justify-content: center; gap: 10px;">
+	                <span class="angle-display" id="angleDisplay">0°</span>
+	                <button class="btn" id="submitAngleBtn">✓ 提交</button>
+	                <button class="btn" id="resetCurveBtn">↺ 新曲线</button>
+	            </div>
+	            <div class="result-badge" id="angleHint">↝ 可手动画线或使用按钮</div>
+	        </div>
+	    </div>
+	    <!-- 坐标比例面板 (完全不变) -->
+	    <div id="coordPanel" class="panel">
+	        <div class="canvas-area">
+	            <div class="canvas-wrapper">
+	                <canvas id="coordRefCanvas" class="coord-canvas" width="300" height="300"></canvas>
+	                <div class="canvas-label">📐 参考形状 (正方形框内)</div>
+	            </div>
+	            <div class="canvas-wrapper">
+	                <canvas id="coordWorkCanvas" class="coord-canvas" width="300" height="300"></canvas>
+	                <div class="canvas-label">✏️ 你的点位 (点击/拖动)</div>
+	            </div>
+	        </div>
+	        <div class="control-panel">
+	            <div class="shape-select-row" id="shapeChipsContainer"></div>
+	            <div class="btn-row">
+	                <button class="btn-sm" id="coordNewShapeBtn">🔄 随机新图形</button>
+	                <button class="btn-sm" id="coordUndoBtn">↩ 撤销</button>
+	                <button class="btn-sm" id="coordClearMarksBtn">🗑 清空点位</button>
+	            </div>
+	            <div class="btn-row">
+	                <button class="btn-sm toggle-btn" id="coordToggleAnswer">👁️ 显示答案</button>
+	                <button class="btn-sm toggle-btn active" id="coordToggleLines">🔗 连线</button>
+	                <button class="btn-sm toggle-btn active" id="coordToggleGrid">📏 网格</button>
+	            </div>
+	            <div class="error-stat">
+	                <span>📊 平均偏差: <strong id="coordAvgError">0.0</strong>%</span>
+	                <span>🎯 最大偏差: <strong id="coordMaxError">0.0</strong>%</span>
+	                <span id="coordPointCount">0/0</span>
+	            </div>
+	            <div class="result-badge" style="margin-top:8px; font-size:0.8rem;">
+	                💡 观察参考点位置(比例) → 在右侧按顺序打点
+	            </div>
+	        </div>
+	    </div>
+	    <!-- 外部练习面板 (完全不变) -->
+	    <div id="externalPanel" class="panel">
+	        <div class="external-btn-container">
+	            <div class="external-card">
+	                <div class="external-title">🎨 色感训练 (HSB)</div>
+	                <button class="btn-external" data-url="https://li-xiao-jia.github.io/tools/1_hsb-trainer.html">打开练习</button>
+	            </div>
+	            <div class="external-card">
+	                <div class="external-title">📐 透视练习 (3D模型)</div>
+	                <button class="btn-external" data-url="https://sketchfab.com/3d-models/c4b168bff6de4327968daa2283846044">打开练习</button>
+	            </div>
+	        </div>
+	    </div>
+	</div>
+	<script>
+	    (function() {
+	        // ========== 全局标签切换 (完全不变) ==========
+	        const tabs = document.querySelectorAll('.tab');
+	        const panels = {
+	            space: document.getElementById('spacePanel'),
+	            slope: document.getElementById('slopePanel'),
+	            coord: document.getElementById('coordPanel'),
+	            external: document.getElementById('externalPanel')
+	        };
+	        tabs.forEach(tab => {
+	            tab.addEventListener('click', () => {
+	                tabs.forEach(t => t.classList.remove('active'));
+	                tab.classList.add('active');
+	                const target = tab.dataset.tab;
+	                Object.values(panels).forEach(p => p.classList.remove('active'));
+	                panels[target].classList.add('active');
+	                if (target === 'space') drawGridCanvas();
+	                else if (target === 'slope') {
+	                    document.getElementById('angleHint').innerText = '↝ 可手动画线或使用按钮';
+	                    updateAngleDisplay();
+	                    drawCurveAndPoints();
+	                    drawAngleCanvas();
+	                } else if (target === 'coord') {
+	                    resizeCoordCanvases();
+	                    drawCoordRef();
+	                    drawCoordWork();
+	                }
+	            });
+	        });
+	        // 外部练习跳转 (完全不变)
+	        document.querySelectorAll('.btn-external').forEach(btn => {
+	            btn.addEventListener('click', (e) => {
+	                const url = btn.getAttribute('data-url');
+	                if (url) window.open(url, '_blank');
+	            });
+	        });
+	        // ========== 空间比例模块 (优化版) ==========
+	        const gridCanvas = document.getElementById('gridCanvas');
+	        const ctxGrid = gridCanvas.getContext('2d');
+	        const SIZE = 400;
+	        let gridLeft = 20, gridTop = 20, gridRight = 380, gridBottom = 380;
+	        let gridWidth = 360, gridHeight = 360;
+	        let gridPoint = { x: 0.5, y: 0.5 };
+	        let userMarks = [];
+	        let hLines = [], vLines = [], curH = null, curV = null, history = [];
+	        let showAux = true, alpha = 0.7;
+	        let currentOrient = 'horizontal', currentSide = 'up';
+	        // 新增：辅助线分割比例，默认1/2
+	        let auxRatio = 0.5;
+	        // 新增：干扰物体数组（替代原来的shortLines）
+	        let interferenceObjects = [];
+	        // 新增：干扰物体颜色库——显眼且各不相同
+	        const OBJ_COLORS = [
+	            '#8B4513', '#2E8B57', '#B22222', '#4169E1', '#9400D3',
+	            '#FF6347', '#20B2AA', '#DAA520', '#CD853F', '#6A5ACD',
+	            '#3CB371', '#DC143C', '#FF69B4', '#00CED1', '#F4A460',
+	            '#7B68EE', '#C71585', '#00FA9A', '#E9967A', '#5F9EA0',
+	            '#D2691E', '#48D1CC', '#FF4500', '#6495ED', '#FFD700'
+	        ];
+	        function getLineColor() { return '#FF3B3B'; }
+	        // 随机取一种颜色（尽量不与已用颜色重复）
+	        function pickObjColor(usedColors) {
+	            let available = OBJ_COLORS.filter(c => !usedColors.has(c));
+	            if (available.length === 0) available = OBJ_COLORS;
+	            const color = available[Math.floor(Math.random() * available.length)];
+	            usedColors.add(color);
+	            return color;
+	        }
+	        function randomGridSize() {
+	            const minSize = 220, maxSize = 400;
+	            gridWidth = Math.floor(Math.random() * (maxSize - minSize + 1)) + minSize;
+	            gridHeight = Math.floor(Math.random() * (maxSize - minSize + 1)) + minSize;
+	            gridLeft = (SIZE - gridWidth) / 2;
+	            gridTop = (SIZE - gridHeight) / 2;
+	            gridRight = gridLeft + gridWidth;
+	            gridBottom = gridTop + gridHeight;
+	        }
+	        // === 新增：判断干扰物体是否离关键点太近 ===
+	        function isObjTooCloseToKeyPoint(obj) {
+	            const keyPx = gridLeft + gridPoint.x * gridWidth;
+	            const keyPy = gridTop + gridPoint.y * gridHeight;
+	            const minDist = 40; // 关键点周围40像素内不放物体
+	            let checkPoints = [];
+	            switch (obj.type) {
+	                case 'line':
+	                    checkPoints = [{ x: obj.x1, y: obj.y1 }, { x: obj.x2, y: obj.y2 }];
+	                    break;
+	                case 'arc':
+	                    // 检查弧线中心
+	                    checkPoints = [{ x: obj.cx, y: obj.cy }];
+	                    break;
+	                case 'triangle':
+	                case 'polygon':
+	                    checkPoints = obj.points.slice();
+	                    break;
+	            }
+	            return checkPoints.some(p => Math.hypot(p.x - keyPx, p.y - keyPy) < minDist);
+	        }
+	        // === 新增：生成直线型干扰 ===
+	        function generateLineObj(usedColors) {
+	            let x1 = gridLeft + Math.random() * gridWidth;
+	            let y1 = gridTop + Math.random() * gridHeight;
+	            let angle = Math.random() * 2 * Math.PI;
+	            let maxLen = Math.min(gridWidth, gridHeight) * 0.3;
+	            let minLen = 20;
+	            let length = minLen + Math.random() * (maxLen - minLen);
+	            let dx = length * Math.cos(angle), dy = length * Math.sin(angle);
+	            let x2 = x1 + dx, y2 = y1 + dy;
+	            if (x2 < gridLeft || x2 > gridRight || y2 < gridTop || y2 > gridBottom) {
+	                x2 = x1 - dx; y2 = y1 - dy;
+	                if (x2 < gridLeft || x2 > gridRight || y2 < gridTop || y2 > gridBottom) return null;
+	            }
+	            return {
+	                type: 'line', x1, y1, x2, y2,
+	                color: pickObjColor(usedColors),
+	                width: 1.5 + Math.random() * 2
+	            };
+	        }
+	        // === 新增：生成弧线型干扰 ===
+	        function generateArcObj(usedColors) {
+	            let maxR = Math.min(gridWidth, gridHeight) * 0.15;
+	            let radius = 10 + Math.random() * maxR;
+	            let safeW = gridWidth - 2 * radius;
+	            let safeH = gridHeight - 2 * radius;
+	            if (safeW < 5 || safeH < 5) return null;
+	            let cx = gridLeft + radius + Math.random() * safeW;
+	            let cy = gridTop + radius + Math.random() * safeH;
+	            let startAngle = Math.random() * Math.PI * 2;
+	            let sweepAngle = (0.3 + Math.random() * 1.2) * Math.PI;
+	            let endAngle = startAngle + sweepAngle;
+	            return {
+	                type: 'arc', cx, cy, radius, startAngle, endAngle,
+	                color: pickObjColor(usedColors),
+	                width: 1.5 + Math.random() * 2
+	            };
+	        }
+	        // === 新增：生成三角形型干扰 ===
+	        function generateTriangleObj(usedColors) {
+	            let centerX = gridLeft + 0.15 * gridWidth + Math.random() * 0.7 * gridWidth;
+	            let centerY = gridTop + 0.15 * gridHeight + Math.random() * 0.7 * gridHeight;
+	            let size = 12 + Math.random() * Math.min(gridWidth, gridHeight) * 0.12;
+	            let points = [];
+	            for (let i = 0; i < 3; i++) {
+	                let angle = (i / 3) * Math.PI * 2 + (Math.random() - 0.5) * 0.8;
+	                let r = size * (0.6 + Math.random() * 0.4);
+	                let x = centerX + r * Math.cos(angle);
+	                let y = centerY + r * Math.sin(angle);
+	                if (x < gridLeft + 2 || x > gridRight - 2 || y < gridTop + 2 || y > gridBottom - 2) return null;
+	                points.push({ x, y });
+	            }
+	            let fill = Math.random() > 0.6;
+	            return {
+	                type: 'triangle', points,
+	                color: pickObjColor(usedColors),
+	                width: 1.5 + Math.random() * 2,
+	                fill
+	            };
+	        }
+	        // === 新增：生成多边形型干扰（4~6边） ===
+	        function generatePolygonObj(usedColors) {
+	            let n = 4 + Math.floor(Math.random() * 3);
+	            let centerX = gridLeft + 0.15 * gridWidth + Math.random() * 0.7 * gridWidth;
+	            let centerY = gridTop + 0.15 * gridHeight + Math.random() * 0.7 * gridHeight;
+	            let size = 12 + Math.random() * Math.min(gridWidth, gridHeight) * 0.1;
+	            let points = [];
+	            for (let i = 0; i < n; i++) {
+	                let angle = (i / n) * Math.PI * 2 + (Math.random() - 0.5) * 0.4;
+	                let r = size * (0.5 + Math.random() * 0.5);
+	                let x = centerX + r * Math.cos(angle);
+	                let y = centerY + r * Math.sin(angle);
+	                if (x < gridLeft + 2 || x > gridRight - 2 || y < gridTop + 2 || y > gridBottom - 2) return null;
+	                points.push({ x, y });
+	            }
+	            let fill = Math.random() > 0.5;
+	            return {
+	                type: 'polygon', points,
+	                color: pickObjColor(usedColors),
+	                width: 1.5 + Math.random() * 2,
+	                fill
+	            };
+	        }
+	        // === 新增：随机生成一个干扰物体 ===
+	        function generateOneObject(usedColors) {
+	            const roll = Math.random();
+	            if (roll < 0.25) return generateLineObj(usedColors);
+	            else if (roll < 0.5) return generateArcObj(usedColors);
+	            else if (roll < 0.75) return generateTriangleObj(usedColors);
+	            else return generatePolygonObj(usedColors);
+	        }
+	        // === 新增：生成全部干扰物体（替代原来的generateShortLines） ===
+	        function generateInterferenceObjects() {
+	            const area = gridWidth * gridHeight;
+	            // 数量比原来少，避免太密
+	            let targetCount = Math.floor(area / 1800);
+	            targetCount = Math.max(4, Math.min(10, targetCount));
+	            interferenceObjects = [];
+	            let usedColors = new Set();
+	            let attempts = 0;
+	            while (interferenceObjects.length < targetCount && attempts < targetCount * 8) {
+	                attempts++;
+	                let obj = generateOneObject(usedColors);
+	                if (!obj) continue;
+	                // 关键点附近不放物体
+	                if (isObjTooCloseToKeyPoint(obj)) continue;
+	                interferenceObjects.push(obj);
+	            }
+	        }
+	        // === 新增：绘制干扰物体 ===
+	        function drawInterferenceObjects() {
+	            ctxGrid.lineCap = 'round';
+	            ctxGrid.lineJoin = 'round';
+	            interferenceObjects.forEach(obj => {
+	                ctxGrid.strokeStyle = obj.color;
+	                ctxGrid.lineWidth = obj.width;
+	                switch (obj.type) {
+	                    case 'line':
+	                        ctxGrid.beginPath();
+	                        ctxGrid.moveTo(obj.x1, obj.y1);
+	                        ctxGrid.lineTo(obj.x2, obj.y2);
+	                        ctxGrid.stroke();
+	                        break;
+	                    case 'arc':
+	                        ctxGrid.beginPath();
+	                        ctxGrid.arc(obj.cx, obj.cy, Math.max(1, obj.radius), obj.startAngle, obj.endAngle);
+	                        ctxGrid.stroke();
+	                        break;
+	                    case 'triangle':
+	                    case 'polygon':
+	                        ctxGrid.beginPath();
+	                        ctxGrid.moveTo(obj.points[0].x, obj.points[0].y);
+	                        for (let i = 1; i < obj.points.length; i++) {
+	                            ctxGrid.lineTo(obj.points[i].x, obj.points[i].y);
+	                        }
+	                        ctxGrid.closePath();
+	                        if (obj.fill) {
+	                            ctxGrid.globalAlpha = 0.15;
+	                            ctxGrid.fillStyle = obj.color;
+	                            ctxGrid.fill();
+	                            ctxGrid.globalAlpha = 1;
+	                        }
+	                        ctxGrid.stroke();
+	                        break;
+	                }
+	            });
+	        }
+	        function randomPoint() { return { x: 0.1 + Math.random() * 0.8, y: 0.1 + Math.random() * 0.8 }; }
+	        // 修改：先确定关键点，再生成干扰物体（确保干扰物避开关键点）
+	        function newGrid() {
+	            randomGridSize();
+	            gridPoint = randomPoint();              // 先生成关键点
+	            generateInterferenceObjects();           // 再生成干扰物体（会避开关键点）
+	            userMarks = []; hLines = []; vLines = []; curH = null; curV = null; history = [];
+	            drawGridCanvas();
+	        }
+	        document.getElementById('newGridBtn').addEventListener('click', newGrid);
+	        document.getElementById('undoAuxBtn').addEventListener('click', () => {
+	            if (history.length === 0) return;
+	            let last = history.pop();
+	            hLines = [...last.hLines]; vLines = [...last.vLines];
+	            curH = last.curH; curV = last.curV;
+	            userMarks = last.userMarks.map(p => ({ ...p }));
+	            drawGridCanvas();
+	        });
+	        document.getElementById('clearMarkBtn').addEventListener('click', () => { userMarks = []; drawGridCanvas(); });
+	        // 修改：辅助线逻辑完全不变，仅把0.5替换为auxRatio
+	        function addAuxLine() {
+	            let type = currentOrient, side = currentSide;
+	            history.push({ hLines: [...hLines], vLines: [...vLines], curH, curV, userMarks: userMarks.map(p => ({ ...p })) });
+	            if (type === 'horizontal') {
+	                if (curH === null) curH = (side === 'up') ? 0 + auxRatio : 1 - auxRatio;
+	                else {
+	                    if (side === 'up') {
+	                        let candidates = hLines.filter(y => y > curH); candidates.push(1);
+	                        let nearest = Math.min(...candidates);
+	                        curH = curH + (nearest - curH) * auxRatio;
+	                    } else {
+	                        let candidates = hLines.filter(y => y < curH); candidates.push(0);
+	                        let nearest = Math.max(...candidates);
+	                        curH = curH - (curH - nearest) * auxRatio;
+	                    }
+	                }
+	                hLines.push(curH);
+	            } else {
+	                if (curV === null) curV = (side === 'up') ? 1 - auxRatio : 0 + auxRatio;
+	                else {
+	                    if (side === 'up') {
+	                        let candidates = vLines.filter(x => x < curV); candidates.push(0);
+	                        let nearest = Math.max(...candidates);
+	                        curV = curV - (curV - nearest) * auxRatio;
+	                    } else {
+	                        let candidates = vLines.filter(x => x > curV); candidates.push(1);
+	                        let nearest = Math.min(...candidates);
+	                        curV = curV + (nearest - curV) * auxRatio;
+	                    }
+	                }
+	                vLines.push(curV);
+	            }
+	            drawGridCanvas();
+	        }
+	        document.getElementById('addLineBtn').addEventListener('click', addAuxLine);
+	        document.querySelectorAll('[data-orient]').forEach(btn => btn.addEventListener('click', (e) => {
+	            document.querySelectorAll('[data-orient]').forEach(b => b.classList.remove('selected'));
+	            e.target.classList.add('selected'); currentOrient = e.target.dataset.orient;
+	        }));
+	        document.querySelectorAll('[data-side]').forEach(btn => btn.addEventListener('click', (e) => {
+	            document.querySelectorAll('[data-side]').forEach(b => b.classList.remove('selected'));
+	            e.target.classList.add('selected'); currentSide = e.target.dataset.side;
+	        }));
+	        // 新增：分割比选择器事件
+	        document.querySelectorAll('[data-ratio]').forEach(btn => btn.addEventListener('click', (e) => {
+	            document.querySelectorAll('[data-ratio]').forEach(b => b.classList.remove('selected'));
+	            e.target.classList.add('selected');
+	            const parts = e.target.dataset.ratio.split('/');
+	            auxRatio = parseInt(parts[0]) / parseInt(parts[1]);
+	        }));
+	        document.getElementById('toggleAuxBtn').addEventListener('click', (e) => { showAux = !showAux; e.target.textContent = showAux ? '👁 隐藏辅助线' : '👁 显示辅助线'; drawGridCanvas(); });
+	        document.getElementById('lineAlphaSlider').addEventListener('input', (e) => { alpha = parseFloat(e.target.value); drawGridCanvas(); });
+	        function addMark(nx, ny) { if (nx >= 0 && nx <= 1 && ny >= 0 && ny <= 1) { userMarks.push({ x: nx, y: ny }); drawGridCanvas(); } }
+	        function handleCanvasClick(e) {
+	            const rect = gridCanvas.getBoundingClientRect();
+	            const scaleX = gridCanvas.width / rect.width, scaleY = gridCanvas.height / rect.height;
+	            let clientX, clientY;
+	            if (e.touches) { clientX = e.touches[0].clientX; clientY = e.touches[0].clientY; e.preventDefault(); }
+	            else { clientX = e.clientX; clientY = e.clientY; }
+	            let canvasX = (clientX - rect.left) * scaleX, canvasY = (clientY - rect.top) * scaleY;
+	            canvasX = Math.min(Math.max(canvasX, 0), SIZE); canvasY = Math.min(Math.max(canvasY, 0), SIZE);
+	            let nx = (canvasX - gridLeft) / gridWidth, ny = (canvasY - gridTop) / gridHeight;
+	            addMark(nx, ny);
+	        }
+	        gridCanvas.addEventListener('click', handleCanvasClick);
+	        gridCanvas.addEventListener('touchstart', (e) => { e.preventDefault(); handleCanvasClick(e); });
+	        // 修改：绘制函数中用新的干扰物体绘制替代原来的shortLines绘制
+	        function drawGridCanvas() {
+	            ctxGrid.clearRect(0, 0, SIZE, SIZE);
+	            ctxGrid.strokeStyle = '#2c3e4f'; ctxGrid.lineWidth = 3; ctxGrid.strokeRect(gridLeft, gridTop, gridWidth, gridHeight);
+	            // 绘制干扰物体（替代原来的shortLines）
+	            drawInterferenceObjects();
+	            if (showAux) {
+	                ctxGrid.lineWidth = 3;
+	                hLines.forEach(y => { ctxGrid.globalAlpha = alpha; ctxGrid.strokeStyle = getLineColor(); let yPos = gridTop + y * gridHeight; ctxGrid.beginPath(); ctxGrid.moveTo(gridLeft, yPos); ctxGrid.lineTo(gridRight, yPos); ctxGrid.stroke(); });
+	                vLines.forEach(x => { ctxGrid.globalAlpha = alpha; ctxGrid.strokeStyle = getLineColor(); let xPos = gridLeft + x * gridWidth; ctxGrid.beginPath(); ctxGrid.moveTo(xPos, gridTop); ctxGrid.lineTo(xPos, gridBottom); ctxGrid.stroke(); });
+	                ctxGrid.globalAlpha = 1;
+	            }
+	            const px = gridLeft + gridPoint.x * gridWidth, py = gridTop + gridPoint.y * gridHeight;
+	            ctxGrid.beginPath(); ctxGrid.fillStyle = '#c44b3c'; ctxGrid.shadowColor = '#b33a2a'; ctxGrid.shadowBlur = 8; ctxGrid.arc(px, py, 2, 0, 2 * Math.PI); ctxGrid.fill();
+	            userMarks.forEach(mark => {
+	                const mx = gridLeft + mark.x * gridWidth, my = gridTop + mark.y * gridHeight;
+	                ctxGrid.beginPath(); ctxGrid.fillStyle = 'rgba(30,144,255,0.5)'; ctxGrid.arc(mx, my, 5, 0, 2 * Math.PI); ctxGrid.fill();
+	                ctxGrid.beginPath(); ctxGrid.strokeStyle = '#1E90FF'; ctxGrid.lineWidth = 1.5; ctxGrid.arc(mx, my, 5, 0, 2 * Math.PI); ctxGrid.stroke();
+	            });
+	            ctxGrid.shadowBlur = 0;
+	        }
+	        newGrid();
+	        // ---------- 斜率模块 (完全不变) ----------
+	        const curveCanvas = document.getElementById('curveCanvas');
+	        const angleCanvas = document.getElementById('angleCanvas');
+	        const ctxCurve = curveCanvas.getContext('2d');
+	        const ctxAngle = angleCanvas.getContext('2d');
+	        const CURVE_SIZE = 250, ANGLE_SIZE = 150;
+	        const CURVE_PAD = 15, ANGLE_PAD = 10;
+	        const MIN_POINT_DIST = 80;
+	        let curvePath = [], pointA = null, pointB = null, leftAngleMod = 0, rightAngle = 0;
+	        let drawing = false;
+	        let startPoint = null;
+	        let tempLine = null;
+	        let autoFixTimer = null;
+	        const defaultHint = '↝ 可手动画线或使用按钮';
+	        function catmullRom(p0, p1, p2, p3, t) { let t2 = t * t, t3 = t2 * t; return 0.5 * ((2 * p1) + (-p0 + p2) * t + (2 * p0 - 5 * p1 + 4 * p2 - p3) * t2 + (-p0 + 3 * p1 - 3 * p2 + p3) * t3); }
+	        function generateRandomCurve() {
+	            for (let a = 0; a < 30; a++) {
+	                const w = CURVE_SIZE - 2 * CURVE_PAD, h = CURVE_SIZE - 2 * CURVE_PAD;
+	                const num = 3 + Math.floor(Math.random() * 4);
+	                let pts = [];
+	                for (let i = 0; i < num; i++) pts.push({ x: CURVE_PAD + Math.random() * w, y: CURVE_PAD + Math.random() * h });
+	                let curve = [];
+	                for (let i = 0; i < pts.length - 1; i++) {
+	                    let p0 = pts[Math.max(0, i - 1)], p1 = pts[i], p2 = pts[i + 1], p3 = pts[Math.min(pts.length - 1, i + 2)];
+	                    for (let t = 0; t <= 50; t++) {
+	                        let t2 = t / 50; let x = catmullRom(p0.x, p1.x, p2.x, p3.x, t2), y = catmullRom(p0.y, p1.y, p2.y, p3.y, t2);
+	                        x = Math.min(Math.max(x, CURVE_PAD), CURVE_SIZE - CURVE_PAD); y = Math.min(Math.max(y, CURVE_PAD), CURVE_SIZE - CURVE_PAD);
+	                        curve.push({ x, y });
+	                    }
+	                }
+	                let unique = [];
+	                for (let i = 0; i < curve.length; i++) if (i === 0 || Math.hypot(curve[i].x - curve[i - 1].x, curve[i].y - curve[i - 1].y) > 1) unique.push(curve[i]);
+	                if (unique.every(p => p.x >= CURVE_PAD && p.x <= CURVE_SIZE - CURVE_PAD && p.y >= CURVE_PAD && p.y <= CURVE_SIZE - CURVE_PAD) && unique.length > 10) return unique;
+	            }
+	            return [{ x: CURVE_PAD, y: CURVE_SIZE / 2 }, { x: CURVE_SIZE - CURVE_PAD, y: CURVE_SIZE / 2 }];
+	        }
+	        function pickTwoPointsOnCurve(curve) {
+	            if (curve.length < 10) return { a: curve[0], b: curve[curve.length - 1] };
+	            for (let i = 0; i < 300; i++) {
+	                let i1 = Math.floor(Math.random() * curve.length), i2 = Math.floor(Math.random() * curve.length);
+	                if (Math.abs(i1 - i2) < curve.length * 0.25) continue;
+	                let p1 = curve[i1], p2 = curve[i2];
+	                if (Math.hypot(p1.x - p2.x, p1.y - p2.y) > MIN_POINT_DIST) return { a: p1, b: p2 };
+	            }
+	            let maxD = 0, best = { a: curve[0], b: curve[curve.length - 1] };
+	            for (let i = 0; i < Math.min(curve.length, 50); i++) for (let j = i + 1; j < Math.min(curve.length, 50); j++) { let d = Math.hypot(curve[i].x - curve[j].x, curve[i].y - curve[j].y); if (d > maxD) { maxD = d; best = { a: curve[i], b: curve[j] }; } }
+	            return best;
+	        }
+	        function getAngleMod180(p1, p2) { let dx = p2.x - p1.x, dy = p2.y - p1.y; let deg = Math.atan2(dy, dx) * 180 / Math.PI; if (deg < 0) deg += 360; let mod = deg % 180; if (mod < 0) mod += 180; return mod; }
+	        function drawCurveAndPoints() {
+	            curvePath = generateRandomCurve();
+	            let { a, b } = pickTwoPointsOnCurve(curvePath);
+	            pointA = a; pointB = b; leftAngleMod = getAngleMod180(pointA, pointB);
+	            ctxCurve.clearRect(0, 0, CURVE_SIZE, CURVE_SIZE);
+	            ctxCurve.strokeStyle = '#333'; ctxCurve.lineWidth = 2; ctxCurve.strokeRect(CURVE_PAD, CURVE_PAD, CURVE_SIZE - 2 * CURVE_PAD, CURVE_SIZE - 2 * CURVE_PAD);
+	            ctxCurve.beginPath(); ctxCurve.moveTo(curvePath[0].x, curvePath[0].y);
+	            for (let i = 1; i < curvePath.length; i++) ctxCurve.lineTo(curvePath[i].x, curvePath[i].y);
+	            ctxCurve.strokeStyle = '#2c6e9e'; ctxCurve.lineWidth = 3; ctxCurve.stroke();
+	            ctxCurve.fillStyle = '#c44b3c'; ctxCurve.beginPath(); ctxCurve.arc(pointA.x, pointA.y, 2.5, 0, 2 * Math.PI); ctxCurve.fill();
+	            ctxCurve.beginPath(); ctxCurve.arc(pointB.x, pointB.y, 2.5, 0, 2 * Math.PI); ctxCurve.fill();
+	        }
+	        function getStretchedLine(p1, p2, pad) {
+	            const left = pad, right = ANGLE_SIZE - pad, top = pad, bottom = ANGLE_SIZE - pad;
+	            let dx = p2.x - p1.x, dy = p2.y - p1.y;
+	            if (dx === 0 && dy === 0) return { start: p1, end: p2 };
+	            let tMin = -Infinity, tMax = Infinity;
+	            if (dx !== 0) { let t1 = (left - p1.x) / dx, t2 = (right - p1.x) / dx; if (t1 > t2)[t1, t2] = [t2, t1]; tMin = Math.max(tMin, t1); tMax = Math.min(tMax, t2); } else if (p1.x < left || p1.x > right) return { start: p1, end: p2 };
+	            if (dy !== 0) { let t1 = (top - p1.y) / dy, t2 = (bottom - p1.y) / dy; if (t1 > t2)[t1, t2] = [t2, t1]; tMin = Math.max(tMin, t1); tMax = Math.min(tMax, t2); } else if (p1.y < top || p1.y > bottom) return { start: p1, end: p2 };
+	            if (tMin > tMax) return { start: p1, end: p2 };
+	            return { start: { x: p1.x + tMin * dx, y: p1.y + tMin * dy }, end: { x: p1.x + tMax * dx, y: p1.y + tMax * dy } };
+	        }
+	        function setRightAngleFromLine(p1, p2) {
+	            let raw = Math.atan2(p2.y - p1.y, p2.x - p1.x) * 180 / Math.PI; if (raw < 0) raw += 360;
+	            rightAngle = raw; drawAngleCanvas();
+	        }
+	        function drawAngleCanvas() {
+	            ctxAngle.clearRect(0, 0, ANGLE_SIZE, ANGLE_SIZE);
+	            ctxAngle.strokeStyle = '#333'; ctxAngle.lineWidth = 2; ctxAngle.strokeRect(ANGLE_PAD, ANGLE_PAD, ANGLE_SIZE - 2 * ANGLE_PAD, ANGLE_SIZE - 2 * ANGLE_PAD);
+	            let cx = ANGLE_SIZE / 2, cy = ANGLE_SIZE / 2, rad = rightAngle * Math.PI / 180;
+	            let left = ANGLE_PAD + 6, right = ANGLE_SIZE - ANGLE_PAD - 6, top = ANGLE_PAD + 6, bottom = ANGLE_SIZE - ANGLE_PAD - 6;
+	            let inters = [];
+	            if (Math.cos(rad) !== 0) {
+	                let t = (left - cx) / Math.cos(rad), y = cy + t * Math.sin(rad); if (y >= top && y <= bottom) inters.push({ x: left, y, t });
+	                t = (right - cx) / Math.cos(rad); y = cy + t * Math.sin(rad); if (y >= top && y <= bottom) inters.push({ x: right, y, t });
+	            }
+	            if (Math.sin(rad) !== 0) {
+	                let t = (top - cy) / Math.sin(rad), x = cx + t * Math.cos(rad); if (x >= left && x <= right) inters.push({ x, y: top, t });
+	                t = (bottom - cy) / Math.sin(rad); x = cx + t * Math.cos(rad); if (x >= left && x <= right) inters.push({ x, y: bottom, t });
+	            }
+	            if (inters.length >= 2) { inters.sort((a, b) => a.t - b.t); ctxAngle.beginPath(); ctxAngle.strokeStyle = '#000'; ctxAngle.lineWidth = 3; ctxAngle.moveTo(inters[0].x, inters[0].y); ctxAngle.lineTo(inters[inters.length - 1].x, inters[inters.length - 1].y); ctxAngle.stroke(); }
+	            if (tempLine) { ctxAngle.beginPath(); ctxAngle.setLineDash([6, 8]); ctxAngle.strokeStyle = '#FF8C00'; ctxAngle.lineWidth = 2; ctxAngle.moveTo(tempLine.x1, tempLine.y1); ctxAngle.lineTo(tempLine.x2, tempLine.y2); ctxAngle.stroke(); ctxAngle.setLineDash([]); }
+	            updateAngleDisplay();
+	        }
+	        function updateAngleDisplay() { let disp = rightAngle % 180; if (disp < 0) disp += 180; document.getElementById('angleDisplay').innerText = Math.round(disp) + '°'; }
+	        function resetCurve() { drawCurveAndPoints(); }
+	        function resetHint() { document.getElementById('angleHint').innerText = defaultHint; }
+	        function getPointerCoords(e) {
+	            const rect = angleCanvas.getBoundingClientRect();
+	            const scaleX = angleCanvas.width / rect.width;
+	            const scaleY = angleCanvas.height / rect.height;
+	            let clientX = e.clientX;
+	            let clientY = e.clientY;
+	            let x = (clientX - rect.left) * scaleX;
+	            let y = (clientY - rect.top) * scaleY;
+	            x = Math.min(Math.max(x, 0), ANGLE_SIZE);
+	            y = Math.min(Math.max(y, 0), ANGLE_SIZE);
+	            return { x, y };
+	        }
+	        function onPointerDown(e) {
+	            e.preventDefault();
+	            angleCanvas.setPointerCapture(e.pointerId);
+	            if (autoFixTimer) clearTimeout(autoFixTimer);
+	            drawing = true;
+	            let { x, y } = getPointerCoords(e);
+	            startPoint = { x, y };
+	            tempLine = { x1: x, y1: y, x2: x, y2: y };
+	            drawAngleCanvas();
+	        }
+	        function onPointerMove(e) {
+	            if (!drawing) return;
+	            e.preventDefault();
+	            let { x, y } = getPointerCoords(e);
+	            tempLine = { x1: startPoint.x, y1: startPoint.y, x2: x, y2: y };
+	            drawAngleCanvas();
+	        }
+	        function onPointerUp(e) {
+	            if (!drawing) return;
+	            e.preventDefault();
+	            angleCanvas.releasePointerCapture(e.pointerId);
+	            let { x, y } = getPointerCoords(e);
+	            tempLine = { x1: startPoint.x, y1: startPoint.y, x2: x, y2: y };
+	            drawAngleCanvas();
+	            if (autoFixTimer) clearTimeout(autoFixTimer);
+	            autoFixTimer = setTimeout(() => {
+	                if (tempLine) {
+	                    let p1 = { x: tempLine.x1, y: tempLine.y1 };
+	                    let p2 = { x: tempLine.x2, y: tempLine.y2 };
+	                    let stretched = getStretchedLine(p1, p2, ANGLE_PAD + 6);
+	                    setRightAngleFromLine(stretched.start, stretched.end);
+	                    tempLine = null;
+	                    drawAngleCanvas();
+	                    resetHint();
+	                }
+	                drawing = false;
+	                startPoint = null;
+	                autoFixTimer = null;
+	            }, 150);
+	        }
+	        angleCanvas.addEventListener('pointerdown', onPointerDown);
+	        angleCanvas.addEventListener('pointermove', onPointerMove);
+	        angleCanvas.addEventListener('pointerup', onPointerUp);
+	        curveCanvas.addEventListener('pointerdown', (e) => e.preventDefault());
+	        curveCanvas.addEventListener('touchstart', (e) => e.preventDefault(), { passive: false });
+	        function clearDrawingState() {
+	            if (autoFixTimer) clearTimeout(autoFixTimer);
+	            drawing = false;
+	            tempLine = null;
+	            startPoint = null;
+	            drawAngleCanvas();
+	        }
+	        document.getElementById('angleStep1M').addEventListener('click', () => { clearDrawingState(); rightAngle = (rightAngle - 1 + 360) % 360; drawAngleCanvas(); resetHint(); });
+	        document.getElementById('angleStep5M').addEventListener('click', () => { clearDrawingState(); rightAngle = (rightAngle - 5 + 360) % 360; drawAngleCanvas(); resetHint(); });
+	        document.getElementById('angleStep10M').addEventListener('click', () => { clearDrawingState(); rightAngle = (rightAngle - 10 + 360) % 360; drawAngleCanvas(); resetHint(); });
+	        document.getElementById('angleStep20M').addEventListener('click', () => { clearDrawingState(); rightAngle = (rightAngle - 20 + 360) % 360; drawAngleCanvas(); resetHint(); });
+	        document.getElementById('angleStep1P').addEventListener('click', () => { clearDrawingState(); rightAngle = (rightAngle + 1) % 360; drawAngleCanvas(); resetHint(); });
+	        document.getElementById('angleStep5P').addEventListener('click', () => { clearDrawingState(); rightAngle = (rightAngle + 5) % 360; drawAngleCanvas(); resetHint(); });
+	        document.getElementById('angleStep10P').addEventListener('click', () => { clearDrawingState(); rightAngle = (rightAngle + 10) % 360; drawAngleCanvas(); resetHint(); });
+	        document.getElementById('angleStep20P').addEventListener('click', () => { clearDrawingState(); rightAngle = (rightAngle + 20) % 360; drawAngleCanvas(); resetHint(); });
+	        document.getElementById('resetCurveBtn').addEventListener('click', () => { clearDrawingState(); resetCurve(); resetHint(); });
+	        document.getElementById('submitAngleBtn').addEventListener('click', () => {
+	            clearDrawingState();
+	            const hint = document.getElementById('angleHint');
+	            let rightMod = rightAngle % 180; if (rightMod < 0) rightMod += 180;
+	            let diff = Math.abs(leftAngleMod - rightMod); diff = Math.min(diff, 180 - diff);
+	            let leftInt = Math.round(leftAngleMod);
+	            if (diff <= 5) {
+	                if (diff === 0) { hint.innerText = `✓ 正确！真实角度为 ${leftInt}° (完全匹配)`; resetCurve(); rightAngle = 0; drawAngleCanvas(); setTimeout(() => { if (panels.slope.classList.contains('active')) resetHint(); }, 1500); }
+	                else hint.innerText = `✓ 正确！真实角度为 ${leftInt}° (误差${Math.round(diff)}°)`;
+	            } else hint.innerText = `✗ 错误`;
+	        });
+	        drawCurveAndPoints(); drawAngleCanvas();
+	        // ========== 坐标比例模块 (完全不变) ==========
+	        (function initCoordModule() {
+	            const refCanvas = document.getElementById('coordRefCanvas');
+	            const workCanvas = document.getElementById('coordWorkCanvas');
+	            const refCtx = refCanvas.getContext('2d');
+	            const workCtx = workCanvas.getContext('2d');
+	            const BASE_SHAPES = {
+	                triangle: { name: '🔺三角形', points: [{ x: 0.5, y: 0.15 }, { x: 0.2, y: 0.8 }, { x: 0.8, y: 0.8 }], closed: true },
+	                rect: { name: '▯ 矩形', points: [{ x: 0.2, y: 0.2 }, { x: 0.8, y: 0.2 }, { x: 0.8, y: 0.8 }, { x: 0.2, y: 0.8 }], closed: true },
+	                pentagon: { name: '⬟ 五边形', points: [{ x: 0.5, y: 0.1 }, { x: 0.85, y: 0.35 }, { x: 0.7, y: 0.85 }, { x: 0.3, y: 0.85 }, { x: 0.15, y: 0.35 }], closed: true },
+	                hexagon: { name: '⬡ 六边形', points: [{ x: 0.5, y: 0.1 }, { x: 0.8, y: 0.3 }, { x: 0.8, y: 0.7 }, { x: 0.5, y: 0.9 }, { x: 0.2, y: 0.7 }, { x: 0.2, y: 0.3 }], closed: true },
+	                star: { name: '★ 星形', points: [{ x: 0.5, y: 0.05 }, { x: 0.6, y: 0.35 }, { x: 0.9, y: 0.4 }, { x: 0.65, y: 0.6 }, { x: 0.75, y: 0.9 }, { x: 0.5, y: 0.75 }, { x: 0.25, y: 0.9 }, { x: 0.35, y: 0.6 }, { x: 0.1, y: 0.4 }, { x: 0.4, y: 0.35 }], closed: true },
+	                house: { name: '🏠 房子', points: [{ x: 0.5, y: 0.1 }, { x: 0.85, y: 0.4 }, { x: 0.85, y: 0.8 }, { x: 0.15, y: 0.8 }, { x: 0.15, y: 0.4 }, { x: 0.5, y: 0.1 }], closed: true },
+	                fish: { name: '🐟 鱼', points: [{ x: 0.7, y: 0.5 }, { x: 0.4, y: 0.2 }, { x: 0.1, y: 0.3 }, { x: 0.05, y: 0.5 }, { x: 0.2, y: 0.65 }, { x: 0.05, y: 0.8 }, { x: 0.3, y: 0.7 }, { x: 0.5, y: 0.75 }, { x: 0.7, y: 0.5 }], closed: true },
+	                arrow: { name: '➤ 箭头', points: [{ x: 0.2, y: 0.3 }, { x: 0.6, y: 0.3 }, { x: 0.6, y: 0.1 }, { x: 0.9, y: 0.5 }, { x: 0.6, y: 0.9 }, { x: 0.6, y: 0.7 }, { x: 0.2, y: 0.7 }], closed: true }
+	            };
+	            const shapeKeys = Object.keys(BASE_SHAPES);
+	            let currentShapeKey = 'triangle';
+	            let targetPoints = [];
+	            let userPoints = [];
+	            const BOX_RATIO = 0.85;
+	            let box = { x: 0, y: 0, size: 0 };
+	            let showAnswer = false, showLines = true, showGrid = true;
+	            let isDragging = false, dragIndex = -1;
+	            const avgSpan = document.getElementById('coordAvgError');
+	            const maxSpan = document.getElementById('coordMaxError');
+	            const countSpan = document.getElementById('coordPointCount');
+	            const toggleAnswer = document.getElementById('coordToggleAnswer');
+	            const toggleLines = document.getElementById('coordToggleLines');
+	            const toggleGrid = document.getElementById('coordToggleGrid');
+	            function calcBox(w, h) {
+	                const size = Math.min(w, h) * BOX_RATIO;
+	                return { x: (w - size) / 2, y: (h - size) / 2, size };
+	            }
+	            function normToPixel(nx, ny) {
+	                return { x: box.x + nx * box.size, y: box.y + ny * box.size };
+	            }
+	            function pixelToNorm(px, py) {
+	                return {
+	                    x: Math.min(1, Math.max(0, (px - box.x) / box.size)),
+	                    y: Math.min(1, Math.max(0, (py - box.y) / box.size))
+	                };
+	            }
+	            function generateRandomShape(baseKey) {
+	                const base = BASE_SHAPES[baseKey].points;
+	                const scale = 0.65 + Math.random() * 0.3;
+	                const maxOffset = (1 - scale) * 0.7;
+	                const offsetX = (Math.random() * 2 - 1) * maxOffset;
+	                const offsetY = (Math.random() * 2 - 1) * maxOffset;
+	                const jitter = 0.015 * scale;
+	                return base.map(p => {
+	                    let nx = p.x * scale + offsetX + (Math.random() - 0.5) * jitter;
+	                    let ny = p.y * scale + offsetY + (Math.random() - 0.5) * jitter;
+	                    return { x: Math.min(0.98, Math.max(0.02, nx)), y: Math.min(0.98, Math.max(0.02, ny)) };
+	                });
+	            }
+	            function refreshShape() {
+	                targetPoints = generateRandomShape(currentShapeKey);
+	                userPoints = [];
+	                drawCoordRef();
+	                drawCoordWork();
+	                updateStats();
+	            }
+	            function setShape(key) {
+	                currentShapeKey = key;
+	                refreshShape();
+	                document.querySelectorAll('.shape-chip').forEach(chip => {
+	                    chip.classList.toggle('active', chip.dataset.shape === key);
+	                });
+	            }
+	            function drawGridInBox(ctx) {
+	                const divisions = 4;
+	                ctx.save();
+	                ctx.strokeStyle = '#aaaaaa';
+	                ctx.lineWidth = 1.2;
+	                for (let i = 1; i < divisions; i++) {
+	                    const pos = box.x + (i / divisions) * box.size;
+	                    ctx.beginPath();
+	                    ctx.moveTo(pos, box.y);
+	                    ctx.lineTo(pos, box.y + box.size);
+	                    ctx.stroke();
+	                    ctx.beginPath();
+	                    ctx.moveTo(box.x, pos);
+	                    ctx.lineTo(box.x + box.size, pos);
+	                    ctx.stroke();
+	                }
+	                ctx.restore();
+	            }
+	            function drawBox(ctx) {
+	                ctx.save();
+	                ctx.strokeStyle = '#2c3e4f';
+	                ctx.lineWidth = 3.5;
+	                ctx.strokeRect(box.x, box.y, box.size, box.size);
+	                ctx.restore();
+	            }
+	            function drawCoordRef() {
+	                const w = refCanvas.width, h = refCanvas.height;
+	                box = calcBox(w, h);
+	                refCtx.clearRect(0, 0, w, h);
+	                refCtx.fillStyle = '#ffffff';
+	                refCtx.fillRect(0, 0, w, h);
+	                if (showGrid) drawGridInBox(refCtx);
+	                const pts = targetPoints.map(p => normToPixel(p.x, p.y));
+	                drawShape(refCtx, pts, BASE_SHAPES[currentShapeKey].closed);
+	                pts.forEach((p, i) => {
+	                    refCtx.beginPath();
+	                    refCtx.arc(p.x, p.y, 7, 0, 2 * Math.PI);
+	                    refCtx.fillStyle = '#1e2b3c';
+	                    refCtx.shadowColor = '#aaa';
+	                    refCtx.shadowBlur = 6;
+	                    refCtx.fill();
+	                    refCtx.shadowBlur = 0;
+	                    refCtx.strokeStyle = '#ffffff';
+	                    refCtx.lineWidth = 2.5;
+	                    refCtx.stroke();
+	                    refCtx.font = 'bold 13px system-ui, sans-serif';
+	                    refCtx.fillStyle = '#1e2b3c';
+	                    refCtx.shadowColor = '#ffffff';
+	                    refCtx.shadowBlur = 3;
+	                    refCtx.fillText(i + 1, p.x + 10, p.y - 10);
+	                    refCtx.shadowBlur = 0;
+	                });
+	                drawBox(refCtx);
+	            }
+	            function drawCoordWork() {
+	                const w = workCanvas.width, h = workCanvas.height;
+	                box = calcBox(w, h);
+	                workCtx.clearRect(0, 0, w, h);
+	                workCtx.fillStyle = '#ffffff';
+	                workCtx.fillRect(0, 0, w, h);
+	                if (showGrid) drawGridInBox(workCtx);
+	                if (showAnswer) {
+	                    targetPoints.forEach((p, i) => {
+	                        const pt = normToPixel(p.x, p.y);
+	                        workCtx.beginPath();
+	                        workCtx.arc(pt.x, pt.y, 6, 0, 2 * Math.PI);
+	                        workCtx.fillStyle = '#e05a3a';
+	                        workCtx.shadowColor = '#ff8a5c';
+	                        workCtx.shadowBlur = 10;
+	                        workCtx.fill();
+	                        workCtx.shadowBlur = 0;
+	                        workCtx.strokeStyle = '#ffffff';
+	                        workCtx.lineWidth = 2;
+	                        workCtx.stroke();
+	                        workCtx.font = 'bold 12px system-ui, sans-serif';
+	                        workCtx.fillStyle = '#1e2b3c';
+	                        workCtx.shadowColor = '#ffffff';
+	                        workCtx.shadowBlur = 4;
+	                        workCtx.fillText(i + 1, pt.x + 9, pt.y - 9);
+	                        workCtx.shadowBlur = 0;
+	                    });
+	                }
+	                if (showLines && userPoints.length >= 2) {
+	                    const up = userPoints.map(p => normToPixel(p.x, p.y));
+	                    workCtx.beginPath();
+	                    workCtx.moveTo(up[0].x, up[0].y);
+	                    for (let i = 1; i < up.length; i++) workCtx.lineTo(up[i].x, up[i].y);
+	                    if (BASE_SHAPES[currentShapeKey].closed && userPoints.length === targetPoints.length) workCtx.closePath();
+	                    workCtx.strokeStyle = '#f2c75f';
+	                    workCtx.lineWidth = 3.5;
+	                    workCtx.stroke();
+	                }
+	                userPoints.forEach((p, i) => {
+	                    const pt = normToPixel(p.x, p.y);
+	                    workCtx.beginPath();
+	                    workCtx.arc(pt.x, pt.y, 8, 0, 2 * Math.PI);
+	                    workCtx.fillStyle = '#f2c75f';
+	                    workCtx.shadowColor = '#e0a800';
+	                    workCtx.shadowBlur = 8;
+	                    workCtx.fill();
+	                    workCtx.shadowBlur = 0;
+	                    workCtx.strokeStyle = '#1e2b3c';
+	                    workCtx.lineWidth = 2.5;
+	                    workCtx.stroke();
+	                    workCtx.font = 'bold 13px system-ui';
+	                    workCtx.fillStyle = '#1e2b3c';
+	                    workCtx.fillText(i + 1, pt.x + 12, pt.y - 12);
+	                });
+	                drawBox(workCtx);
+	                updateStats();
+	            }
+	            function drawShape(ctx, pts, closed) {
+	                ctx.beginPath();
+	                ctx.moveTo(pts[0].x, pts[0].y);
+	                for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+	                if (closed) ctx.closePath();
+	                ctx.fillStyle = '#7a9fd0';
+	                ctx.globalAlpha = 0.35;
+	                ctx.fill();
+	                ctx.globalAlpha = 1.0;
+	                ctx.strokeStyle = '#4f7eb0';
+	                ctx.lineWidth = 3;
+	                ctx.stroke();
+	            }
+	            function updateStats() {
+	                if (userPoints.length === 0) {
+	                    avgSpan.textContent = '0.0';
+	                    maxSpan.textContent = '0.0';
+	                    countSpan.textContent = `0/${targetPoints.length}`;
+	                    return;
+	                }
+	                const diag = Math.sqrt(box.size ** 2 + box.size ** 2);
+	                let total = 0, max = 0;
+	                const len = Math.min(userPoints.length, targetPoints.length);
+	                for (let i = 0; i < len; i++) {
+	                    const dx = (userPoints[i].x - targetPoints[i].x) * box.size;
+	                    const dy = (userPoints[i].y - targetPoints[i].y) * box.size;
+	                    const dist = Math.hypot(dx, dy);
+	                    const err = (dist / diag) * 100;
+	                    total += err;
+	                    if (err > max) max = err;
+	                }
+	                avgSpan.textContent = (total / len).toFixed(2);
+	                maxSpan.textContent = max.toFixed(2);
+	                countSpan.textContent = `${userPoints.length}/${targetPoints.length}`;
+	            }
+	            function resizeCoordCanvases() {
+	                drawCoordRef();
+	                drawCoordWork();
+	            }
+	            function handleWorkPointer(e, isDown, isMove) {
+	                e.preventDefault();
+	                const rect = workCanvas.getBoundingClientRect();
+	                const scaleX = workCanvas.width / rect.width;
+	                const scaleY = workCanvas.height / rect.height;
+	                let cx, cy;
+	                if (e.touches) { cx = e.touches[0].clientX; cy = e.touches[0].clientY; }
+	                else { cx = e.clientX; cy = e.clientY; }
+	                const canvasX = (cx - rect.left) * scaleX;
+	                const canvasY = (cy - rect.top) * scaleY;
+	                const norm = pixelToNorm(canvasX, canvasY);
+	                if (isDown) {
+	                    const threshold = 30;
+	                    let hit = -1;
+	                    userPoints.forEach((p, i) => {
+	                        const dx = (p.x - norm.x) * box.size;
+	                        const dy = (p.y - norm.y) * box.size;
+	                        if (Math.hypot(dx, dy) < threshold) hit = i;
+	                    });
+	                    if (hit !== -1) {
+	                        isDragging = true;
+	                        dragIndex = hit;
+	                    } else if (userPoints.length < targetPoints.length) {
+	                        userPoints.push({ x: norm.x, y: norm.y });
+	                        drawCoordWork();
+	                    }
+	                } else if (isMove && isDragging) {
+	                    userPoints[dragIndex] = { x: norm.x, y: norm.y };
+	                    drawCoordWork();
+	                } else if (!isDown && !isMove) {
+	                    isDragging = false;
+	                    dragIndex = -1;
+	                }
+	            }
+	            workCanvas.addEventListener('touchstart', (e) => handleWorkPointer(e, true, false), { passive: false });
+	            workCanvas.addEventListener('touchmove', (e) => handleWorkPointer(e, false, true), { passive: false });
+	            workCanvas.addEventListener('touchend', () => { isDragging = false; });
+	            workCanvas.addEventListener('mousedown', (e) => handleWorkPointer(e, true, false));
+	            workCanvas.addEventListener('mousemove', (e) => handleWorkPointer(e, false, true));
+	            workCanvas.addEventListener('mouseup', () => { isDragging = false; });
+	            document.getElementById('coordNewShapeBtn').onclick = refreshShape;
+	            document.getElementById('coordUndoBtn').onclick = () => { userPoints.pop(); drawCoordWork(); };
+	            document.getElementById('coordClearMarksBtn').onclick = () => { userPoints = []; drawCoordWork(); };
+	            toggleAnswer.onclick = () => { showAnswer = !showAnswer; toggleAnswer.classList.toggle('active', showAnswer); drawCoordWork(); };
+	            toggleLines.onclick = () => { showLines = !showLines; toggleLines.classList.toggle('active', showLines); drawCoordWork(); };
+	            toggleGrid.onclick = () => { showGrid = !showGrid; toggleGrid.classList.toggle('active', showGrid); drawCoordRef(); drawCoordWork(); };
+	            const container = document.getElementById('shapeChipsContainer');
+	            shapeKeys.forEach(key => {
+	                const chip = document.createElement('button');
+	                chip.className = 'shape-chip' + (key === 'triangle' ? ' active' : '');
+	                chip.dataset.shape = key;
+	                chip.textContent = BASE_SHAPES[key].name;
+	                chip.onclick = () => setShape(key);
+	                container.appendChild(chip);
+	            });
+	            refreshShape();
+	            window.addEventListener('resize', () => {
+	                if (panels.coord.classList.contains('active')) resizeCoordCanvases();
+	            });
+	        })();
+	        window.addEventListener('resize', () => {
+	            if (panels.space.classList.contains('active')) drawGridCanvas();
+	            if (panels.slope.classList.contains('active')) { drawCurveAndPoints(); drawAngleCanvas(); }
+	            if (panels.coord.classList.contains('active')) { drawCoordRef(); drawCoordWork(); }
+	        });
+	    })();
+	</script>
+	</body>
+	</html>
