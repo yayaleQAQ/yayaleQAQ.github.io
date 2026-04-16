@@ -760,7 +760,7 @@
 	            ctxGrid.beginPath(); ctxGrid.fillStyle = '#c44b3c'; ctxGrid.shadowColor = '#b33a2a'; ctxGrid.shadowBlur = 8; ctxGrid.arc(px, py, 2, 0, 2 * Math.PI); ctxGrid.fill();
 	            userMarks.forEach(mark => {
 	                const mx = gridLeft + mark.x * gridWidth, my = gridTop + mark.y * gridHeight;
-	                ctxGrid.beginPath(); ctxGrid.fillStyle = 'rgba(30,144,255,0.5)'; ctxGrid.arc(mx, my, 5, 0, 2 * Math.PI); ctxGrid.fill();
+	                ctxGrid.beginPath(); ctxGrid.fillStyle = 'rgba(30,144,255,0.5)'; ctxGrid.arc(mx, my, 2.5, 0, 2 * Math.PI); ctxGrid.fill();
 	                ctxGrid.beginPath(); ctxGrid.strokeStyle = '#1E90FF'; ctxGrid.lineWidth = 1.5; ctxGrid.arc(mx, my, 5, 0, 2 * Math.PI); ctxGrid.stroke();
 	            });
 	            ctxGrid.shadowBlur = 0;
