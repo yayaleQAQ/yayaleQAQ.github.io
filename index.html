@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes, viewport-fit=cover">
-    <title>练习 · 空间比例优化</title>
+    <title>练习</title>
     <style>
         * {
             box-sizing: border-box;
@@ -281,6 +281,17 @@
             border-color: #2c4a6e;
             color: white;
         }
+        /* 比例显示专用样式 */
+        .ratio-badge {
+            background: #e0d5ca;
+            border-radius: 30px;
+            padding: 6px 16px;
+            font-weight: 500;
+            font-size: 0.9rem;
+            color: #1f1c19;
+            display: inline-block;
+            box-shadow: inset 0 1px 3px rgba(0,0,0,0.05);
+        }
     </style>
 </head>
 <body>
@@ -291,7 +302,7 @@
         <button class="tab" data-tab="coord">📍 坐标比例</button>
         <button class="tab" data-tab="external">🌐 外部练习</button>
     </div>
-    <!-- 空间比例面板 (优化版：标记点显示/隐藏开关，默认隐藏) -->
+    <!-- 空间比例面板 (优化：比例显示/隐藏，默认隐藏；新格子后重置状态) -->
     <div id="spacePanel" class="panel active">
         <div class="canvas-area">
             <canvas id="gridCanvas" class="grid-canvas" width="400" height="400"></canvas>
@@ -327,8 +338,12 @@
                     <button class="toggle-option" data-ratio="1/6">⅙</button>
                 </div>
                 <button class="btn" id="addLineBtn">➕ 添加辅助线</button>
-                <!-- ✅ 新增：标记点显示/隐藏开关 (默认隐藏) -->
                 <button class="btn-sm" id="toggleMarksBtn">👁 显示标记点</button>
+            </div>
+            <!-- ✅ 新增：比例显示控制行 (默认隐藏) -->
+            <div class="btn-row" style="justify-content: space-between;">
+                <button class="btn-sm" id="toggleRatioBtn">📊 显示比例</button>
+                <span id="ratioText" class="ratio-badge" style="display: none;">X: 1:1 Y: 1:1</span>
             </div>
             <div class="result-badge" style="background: #e0d5ca; font-size:0.8rem;">
                 💡 点击格子添加蓝色标记点（可多个）
@@ -431,7 +446,10 @@
                 const target = tab.dataset.tab;
                 Object.values(panels).forEach(p => p.classList.remove('active'));
                 panels[target].classList.add('active');
-                if (target === 'space') drawGridCanvas();
+                if (target === 'space') {
+                    drawGridCanvas();
+                    updateRatioDisplay(); // 确保比例文字状态正确
+                }
                 else if (target === 'slope') {
                     document.getElementById('angleHint').innerText = '↝ 可手动画线或使用按钮';
                     updateAngleDisplay();
@@ -451,7 +469,8 @@
                 if (url) window.open(url, '_blank');
             });
         });
-        // ========== 空间比例模块 (优化版：增加标记点显示/隐藏开关，默认隐藏) ==========
+
+        // ========== 空间比例模块 (优化：比例显示/隐藏，新格子重置状态) ==========
         const gridCanvas = document.getElementById('gridCanvas');
         const ctxGrid = gridCanvas.getContext('2d');
         const SIZE = 400;
@@ -461,11 +480,18 @@
         let userMarks = [];
         let hLines = [], vLines = [], curH = null, curV = null, history = [];
         let showAux = true, alpha = 0.7;
-        // ✅ 新增：标记点显示状态，默认隐藏
-        let showMarks = false;
+        let showMarks = false;           // 标记点默认隐藏
+        let showRatio = false;           // 比例显示默认隐藏
         let currentOrient = 'horizontal', currentSide = 'up';
         let auxRatio = 0.5;
         let interferenceObjects = [];
+
+        // UI元素
+        const toggleAuxBtn = document.getElementById('toggleAuxBtn');
+        const toggleMarksBtn = document.getElementById('toggleMarksBtn');
+        const toggleRatioBtn = document.getElementById('toggleRatioBtn');
+        const ratioTextSpan = document.getElementById('ratioText');
+
         const OBJ_COLORS = [
             '#8B4513', '#2E8B57', '#B22222', '#4169E1', '#9400D3',
             '#FF6347', '#20B2AA', '#DAA520', '#CD853F', '#6A5ACD',
@@ -473,6 +499,7 @@
             '#7B68EE', '#C71585', '#00FA9A', '#E9967A', '#5F9EA0',
             '#D2691E', '#48D1CC', '#FF4500', '#6495ED', '#FFD700'
         ];
+
         function getLineColor() { return '#FF3B3B'; }
         function pickObjColor(usedColors) {
             let available = OBJ_COLORS.filter(c => !usedColors.has(c));
@@ -496,16 +523,9 @@
             const minDist = 40;
             let checkPoints = [];
             switch (obj.type) {
-                case 'line':
-                    checkPoints = [{ x: obj.x1, y: obj.y1 }, { x: obj.x2, y: obj.y2 }];
-                    break;
-                case 'arc':
-                    checkPoints = [{ x: obj.cx, y: obj.cy }];
-                    break;
-                case 'triangle':
-                case 'polygon':
-                    checkPoints = obj.points.slice();
-                    break;
+                case 'line': checkPoints = [{ x: obj.x1, y: obj.y1 }, { x: obj.x2, y: obj.y2 }]; break;
+                case 'arc': checkPoints = [{ x: obj.cx, y: obj.cy }]; break;
+                case 'triangle': case 'polygon': checkPoints = obj.points.slice(); break;
             }
             return checkPoints.some(p => Math.hypot(p.x - keyPx, p.y - keyPy) < minDist);
         }
@@ -522,11 +542,7 @@
                 x2 = x1 - dx; y2 = y1 - dy;
                 if (x2 < gridLeft || x2 > gridRight || y2 < gridTop || y2 > gridBottom) return null;
             }
-            return {
-                type: 'line', x1, y1, x2, y2,
-                color: pickObjColor(usedColors),
-                width: 1.5 + Math.random() * 2
-            };
+            return { type: 'line', x1, y1, x2, y2, color: pickObjColor(usedColors), width: 1.5 + Math.random() * 2 };
         }
         function generateArcObj(usedColors) {
             let maxR = Math.min(gridWidth, gridHeight) * 0.15;
@@ -539,11 +555,7 @@
             let startAngle = Math.random() * Math.PI * 2;
             let sweepAngle = (0.3 + Math.random() * 1.2) * Math.PI;
             let endAngle = startAngle + sweepAngle;
-            return {
-                type: 'arc', cx, cy, radius, startAngle, endAngle,
-                color: pickObjColor(usedColors),
-                width: 1.5 + Math.random() * 2
-            };
+            return { type: 'arc', cx, cy, radius, startAngle, endAngle, color: pickObjColor(usedColors), width: 1.5 + Math.random() * 2 };
         }
         function generateTriangleObj(usedColors) {
             let centerX = gridLeft + 0.15 * gridWidth + Math.random() * 0.7 * gridWidth;
@@ -559,12 +571,7 @@
                 points.push({ x, y });
             }
             let fill = Math.random() > 0.6;
-            return {
-                type: 'triangle', points,
-                color: pickObjColor(usedColors),
-                width: 1.5 + Math.random() * 2,
-                fill
-            };
+            return { type: 'triangle', points, color: pickObjColor(usedColors), width: 1.5 + Math.random() * 2, fill };
         }
         function generatePolygonObj(usedColors) {
             let n = 4 + Math.floor(Math.random() * 3);
@@ -581,12 +588,7 @@
                 points.push({ x, y });
             }
             let fill = Math.random() > 0.5;
-            return {
-                type: 'polygon', points,
-                color: pickObjColor(usedColors),
-                width: 1.5 + Math.random() * 2,
-                fill
-            };
+            return { type: 'polygon', points, color: pickObjColor(usedColors), width: 1.5 + Math.random() * 2, fill };
         }
         function generateOneObject(usedColors) {
             const roll = Math.random();
@@ -618,43 +620,69 @@
                 ctxGrid.lineWidth = obj.width;
                 switch (obj.type) {
                     case 'line':
-                        ctxGrid.beginPath();
-                        ctxGrid.moveTo(obj.x1, obj.y1);
-                        ctxGrid.lineTo(obj.x2, obj.y2);
-                        ctxGrid.stroke();
-                        break;
+                        ctxGrid.beginPath(); ctxGrid.moveTo(obj.x1, obj.y1); ctxGrid.lineTo(obj.x2, obj.y2); ctxGrid.stroke(); break;
                     case 'arc':
-                        ctxGrid.beginPath();
-                        ctxGrid.arc(obj.cx, obj.cy, Math.max(1, obj.radius), obj.startAngle, obj.endAngle);
-                        ctxGrid.stroke();
-                        break;
-                    case 'triangle':
-                    case 'polygon':
-                        ctxGrid.beginPath();
-                        ctxGrid.moveTo(obj.points[0].x, obj.points[0].y);
-                        for (let i = 1; i < obj.points.length; i++) {
-                            ctxGrid.lineTo(obj.points[i].x, obj.points[i].y);
-                        }
+                        ctxGrid.beginPath(); ctxGrid.arc(obj.cx, obj.cy, Math.max(1, obj.radius), obj.startAngle, obj.endAngle); ctxGrid.stroke(); break;
+                    case 'triangle': case 'polygon':
+                        ctxGrid.beginPath(); ctxGrid.moveTo(obj.points[0].x, obj.points[0].y);
+                        for (let i = 1; i < obj.points.length; i++) ctxGrid.lineTo(obj.points[i].x, obj.points[i].y);
                         ctxGrid.closePath();
-                        if (obj.fill) {
-                            ctxGrid.globalAlpha = 0.15;
-                            ctxGrid.fillStyle = obj.color;
-                            ctxGrid.fill();
-                            ctxGrid.globalAlpha = 1;
-                        }
-                        ctxGrid.stroke();
-                        break;
+                        if (obj.fill) { ctxGrid.globalAlpha = 0.15; ctxGrid.fillStyle = obj.color; ctxGrid.fill(); ctxGrid.globalAlpha = 1; }
+                        ctxGrid.stroke(); break;
                 }
             });
         }
         function randomPoint() { return { x: 0.1 + Math.random() * 0.8, y: 0.1 + Math.random() * 0.8 }; }
+
+        // ✅ 计算并更新比例文本 (基于gridPoint)
+        function computeRatioString() {
+            const leftDist = gridPoint.x * gridWidth;
+            const rightDist = gridWidth - leftDist;
+            const topDist = gridPoint.y * gridHeight;
+            const bottomDist = gridHeight - topDist;
+
+            let xRatio, yRatio;
+            if (leftDist <= rightDist) {
+                xRatio = `1 : ${(rightDist / leftDist).toFixed(1)}`;
+            } else {
+                xRatio = `${(leftDist / rightDist).toFixed(1)} : 1`;
+            }
+            if (topDist <= bottomDist) {
+                yRatio = `1 : ${(bottomDist / topDist).toFixed(1)}`;
+            } else {
+                yRatio = `${(topDist / bottomDist).toFixed(1)} : 1`;
+            }
+            return `X: ${xRatio}  Y: ${yRatio}`;
+        }
+
+        function updateRatioDisplay() {
+            if (showRatio) {
+                ratioTextSpan.textContent = computeRatioString();
+                ratioTextSpan.style.display = 'inline-block';
+            } else {
+                ratioTextSpan.style.display = 'none';
+            }
+        }
+
+        // ✅ 新格子：重置所有视觉状态 (比例隐藏、标记点隐藏、辅助线显示)
         function newGrid() {
             randomGridSize();
             gridPoint = randomPoint();
             generateInterferenceObjects();
             userMarks = []; hLines = []; vLines = []; curH = null; curV = null; history = [];
+            
+            // 重置UI状态
+            showAux = true;
+            toggleAuxBtn.textContent = '👁 隐藏辅助线';
+            showMarks = false;
+            toggleMarksBtn.textContent = '👁 显示标记点';
+            showRatio = false;
+            toggleRatioBtn.textContent = '📊 显示比例';
+            
             drawGridCanvas();
+            updateRatioDisplay();  // 隐藏比例文字
         }
+
         document.getElementById('newGridBtn').addEventListener('click', newGrid);
         document.getElementById('undoAuxBtn').addEventListener('click', () => {
             if (history.length === 0) return;
@@ -663,15 +691,22 @@
             curH = last.curH; curV = last.curV;
             userMarks = last.userMarks.map(p => ({ ...p }));
             drawGridCanvas();
+            // 比例显示不受影响，但gridPoint不变，无需更新
         });
         document.getElementById('clearMarkBtn').addEventListener('click', () => { userMarks = []; drawGridCanvas(); });
-        
-        // ✅ 新增：标记点显示/隐藏切换 (默认隐藏)
-        const toggleMarksBtn = document.getElementById('toggleMarksBtn');
+
+        // 标记点显示切换
         toggleMarksBtn.addEventListener('click', (e) => {
             showMarks = !showMarks;
             e.target.textContent = showMarks ? '👁 隐藏标记点' : '👁 显示标记点';
             drawGridCanvas();
+        });
+
+        // ✅ 比例显示切换
+        toggleRatioBtn.addEventListener('click', (e) => {
+            showRatio = !showRatio;
+            e.target.textContent = showRatio ? '📊 隐藏比例' : '📊 显示比例';
+            updateRatioDisplay();
         });
 
         function addAuxLine() {
@@ -723,8 +758,13 @@
             const parts = e.target.dataset.ratio.split('/');
             auxRatio = parseInt(parts[0]) / parseInt(parts[1]);
         }));
-        document.getElementById('toggleAuxBtn').addEventListener('click', (e) => { showAux = !showAux; e.target.textContent = showAux ? '👁 隐藏辅助线' : '👁 显示辅助线'; drawGridCanvas(); });
+        toggleAuxBtn.addEventListener('click', (e) => { 
+            showAux = !showAux; 
+            e.target.textContent = showAux ? '👁 隐藏辅助线' : '👁 显示辅助线'; 
+            drawGridCanvas(); 
+        });
         document.getElementById('lineAlphaSlider').addEventListener('input', (e) => { alpha = parseFloat(e.target.value); drawGridCanvas(); });
+        
         function addMark(nx, ny) { if (nx >= 0 && nx <= 1 && ny >= 0 && ny <= 1) { userMarks.push({ x: nx, y: ny }); drawGridCanvas(); } }
         function handleCanvasClick(e) {
             const rect = gridCanvas.getBoundingClientRect();
@@ -751,9 +791,9 @@
                 ctxGrid.globalAlpha = 1;
             }
             const px = gridLeft + gridPoint.x * gridWidth, py = gridTop + gridPoint.y * gridHeight;
-            ctxGrid.beginPath(); ctxGrid.fillStyle = '#c44b3c'; ctxGrid.shadowColor = '#b33a2a'; ctxGrid.shadowBlur = 8; ctxGrid.arc(px, py, 2, 0, 2 * Math.PI); ctxGrid.fill();
+            ctxGrid.beginPath(); ctxGrid.fillStyle = '#c44b3c'; ctxGrid.shadowColor = '#b33a2a'; ctxGrid.shadowBlur = 8; ctxGrid.arc(px, py, 2.5, 0, 2 * Math.PI); ctxGrid.fill();
+            ctxGrid.shadowBlur = 0;
             
-            // ✅ 只有 showMarks 为 true 时才绘制标记点（默认隐藏，不影响点击添加）
             if (showMarks) {
                 userMarks.forEach(mark => {
                     const mx = gridLeft + mark.x * gridWidth, my = gridTop + mark.y * gridHeight;
@@ -761,9 +801,8 @@
                     ctxGrid.beginPath(); ctxGrid.strokeStyle = '#1E90FF'; ctxGrid.lineWidth = 1.5; ctxGrid.arc(mx, my, 2.5, 0, 2 * Math.PI); ctxGrid.stroke();
                 });
             }
-            ctxGrid.shadowBlur = 0;
+            // 比例显示在HTML中，无需画布绘制
         }
-        newGrid();
 
         // ---------- 斜率模块 (完全不变) ----------
         const curveCanvas = document.getElementById('curveCanvas');
@@ -774,10 +813,7 @@
         const CURVE_PAD = 15, ANGLE_PAD = 10;
         const MIN_POINT_DIST = 80;
         let curvePath = [], pointA = null, pointB = null, leftAngleMod = 0, rightAngle = 0;
-        let drawing = false;
-        let startPoint = null;
-        let tempLine = null;
-        let autoFixTimer = null;
+        let drawing = false, startPoint = null, tempLine = null, autoFixTimer = null;
         const defaultHint = '↝ 可手动画线或使用按钮';
         function catmullRom(p0, p1, p2, p3, t) { let t2 = t * t, t3 = t2 * t; return 0.5 * ((2 * p1) + (-p0 + p2) * t + (2 * p0 - 5 * p1 + 4 * p2 - p3) * t2 + (-p0 + 3 * p1 - 3 * p2 + p3) * t3); }
         function generateRandomCurve() {
@@ -836,24 +872,15 @@
             if (tMin > tMax) return { start: p1, end: p2 };
             return { start: { x: p1.x + tMin * dx, y: p1.y + tMin * dy }, end: { x: p1.x + tMax * dx, y: p1.y + tMax * dy } };
         }
-        function setRightAngleFromLine(p1, p2) {
-            let raw = Math.atan2(p2.y - p1.y, p2.x - p1.x) * 180 / Math.PI; if (raw < 0) raw += 360;
-            rightAngle = raw; drawAngleCanvas();
-        }
+        function setRightAngleFromLine(p1, p2) { let raw = Math.atan2(p2.y - p1.y, p2.x - p1.x) * 180 / Math.PI; if (raw < 0) raw += 360; rightAngle = raw; drawAngleCanvas(); }
         function drawAngleCanvas() {
             ctxAngle.clearRect(0, 0, ANGLE_SIZE, ANGLE_SIZE);
             ctxAngle.strokeStyle = '#333'; ctxAngle.lineWidth = 2; ctxAngle.strokeRect(ANGLE_PAD, ANGLE_PAD, ANGLE_SIZE - 2 * ANGLE_PAD, ANGLE_SIZE - 2 * ANGLE_PAD);
             let cx = ANGLE_SIZE / 2, cy = ANGLE_SIZE / 2, rad = rightAngle * Math.PI / 180;
             let left = ANGLE_PAD + 6, right = ANGLE_SIZE - ANGLE_PAD - 6, top = ANGLE_PAD + 6, bottom = ANGLE_SIZE - ANGLE_PAD - 6;
             let inters = [];
-            if (Math.cos(rad) !== 0) {
-                let t = (left - cx) / Math.cos(rad), y = cy + t * Math.sin(rad); if (y >= top && y <= bottom) inters.push({ x: left, y, t });
-                t = (right - cx) / Math.cos(rad); y = cy + t * Math.sin(rad); if (y >= top && y <= bottom) inters.push({ x: right, y, t });
-            }
-            if (Math.sin(rad) !== 0) {
-                let t = (top - cy) / Math.sin(rad), x = cx + t * Math.cos(rad); if (x >= left && x <= right) inters.push({ x, y: top, t });
-                t = (bottom - cy) / Math.sin(rad); x = cx + t * Math.cos(rad); if (x >= left && x <= right) inters.push({ x, y: bottom, t });
-            }
+            if (Math.cos(rad) !== 0) { let t = (left - cx) / Math.cos(rad), y = cy + t * Math.sin(rad); if (y >= top && y <= bottom) inters.push({ x: left, y, t }); t = (right - cx) / Math.cos(rad); y = cy + t * Math.sin(rad); if (y >= top && y <= bottom) inters.push({ x: right, y, t }); }
+            if (Math.sin(rad) !== 0) { let t = (top - cy) / Math.sin(rad), x = cx + t * Math.cos(rad); if (x >= left && x <= right) inters.push({ x, y: top, t }); t = (bottom - cy) / Math.sin(rad); x = cx + t * Math.cos(rad); if (x >= left && x <= right) inters.push({ x, y: bottom, t }); }
             if (inters.length >= 2) { inters.sort((a, b) => a.t - b.t); ctxAngle.beginPath(); ctxAngle.strokeStyle = '#000'; ctxAngle.lineWidth = 3; ctxAngle.moveTo(inters[0].x, inters[0].y); ctxAngle.lineTo(inters[inters.length - 1].x, inters[inters.length - 1].y); ctxAngle.stroke(); }
             if (tempLine) { ctxAngle.beginPath(); ctxAngle.setLineDash([6, 8]); ctxAngle.strokeStyle = '#FF8C00'; ctxAngle.lineWidth = 2; ctxAngle.moveTo(tempLine.x1, tempLine.y1); ctxAngle.lineTo(tempLine.x2, tempLine.y2); ctxAngle.stroke(); ctxAngle.setLineDash([]); }
             updateAngleDisplay();
@@ -862,69 +889,16 @@
         function resetCurve() { drawCurveAndPoints(); }
         function resetHint() { document.getElementById('angleHint').innerText = defaultHint; }
         function getPointerCoords(e) {
-            const rect = angleCanvas.getBoundingClientRect();
-            const scaleX = angleCanvas.width / rect.width;
-            const scaleY = angleCanvas.height / rect.height;
-            let clientX = e.clientX;
-            let clientY = e.clientY;
-            let x = (clientX - rect.left) * scaleX;
-            let y = (clientY - rect.top) * scaleY;
-            x = Math.min(Math.max(x, 0), ANGLE_SIZE);
-            y = Math.min(Math.max(y, 0), ANGLE_SIZE);
-            return { x, y };
+            const rect = angleCanvas.getBoundingClientRect(); const scaleX = angleCanvas.width / rect.width, scaleY = angleCanvas.height / rect.height;
+            let x = (e.clientX - rect.left) * scaleX, y = (e.clientY - rect.top) * scaleY;
+            return { x: Math.min(Math.max(x, 0), ANGLE_SIZE), y: Math.min(Math.max(y, 0), ANGLE_SIZE) };
         }
-        function onPointerDown(e) {
-            e.preventDefault();
-            angleCanvas.setPointerCapture(e.pointerId);
-            if (autoFixTimer) clearTimeout(autoFixTimer);
-            drawing = true;
-            let { x, y } = getPointerCoords(e);
-            startPoint = { x, y };
-            tempLine = { x1: x, y1: y, x2: x, y2: y };
-            drawAngleCanvas();
-        }
-        function onPointerMove(e) {
-            if (!drawing) return;
-            e.preventDefault();
-            let { x, y } = getPointerCoords(e);
-            tempLine = { x1: startPoint.x, y1: startPoint.y, x2: x, y2: y };
-            drawAngleCanvas();
-        }
-        function onPointerUp(e) {
-            if (!drawing) return;
-            e.preventDefault();
-            angleCanvas.releasePointerCapture(e.pointerId);
-            let { x, y } = getPointerCoords(e);
-            tempLine = { x1: startPoint.x, y1: startPoint.y, x2: x, y2: y };
-            drawAngleCanvas();
-            if (autoFixTimer) clearTimeout(autoFixTimer);
-            autoFixTimer = setTimeout(() => {
-                if (tempLine) {
-                    let p1 = { x: tempLine.x1, y: tempLine.y1 };
-                    let p2 = { x: tempLine.x2, y: tempLine.y2 };
-                    let stretched = getStretchedLine(p1, p2, ANGLE_PAD + 6);
-                    setRightAngleFromLine(stretched.start, stretched.end);
-                    tempLine = null;
-                    drawAngleCanvas();
-                    resetHint();
-                }
-                drawing = false;
-                startPoint = null;
-                autoFixTimer = null;
-            }, 150);
-        }
-        angleCanvas.addEventListener('pointerdown', onPointerDown);
-        angleCanvas.addEventListener('pointermove', onPointerMove);
-        angleCanvas.addEventListener('pointerup', onPointerUp);
-        curveCanvas.addEventListener('pointerdown', (e) => e.preventDefault());
-        curveCanvas.addEventListener('touchstart', (e) => e.preventDefault(), { passive: false });
-        function clearDrawingState() {
-            if (autoFixTimer) clearTimeout(autoFixTimer);
-            drawing = false;
-            tempLine = null;
-            startPoint = null;
-            drawAngleCanvas();
-        }
+        function onPointerDown(e) { e.preventDefault(); angleCanvas.setPointerCapture(e.pointerId); if (autoFixTimer) clearTimeout(autoFixTimer); drawing = true; let { x, y } = getPointerCoords(e); startPoint = { x, y }; tempLine = { x1: x, y1: y, x2: x, y2: y }; drawAngleCanvas(); }
+        function onPointerMove(e) { if (!drawing) return; e.preventDefault(); let { x, y } = getPointerCoords(e); tempLine = { x1: startPoint.x, y1: startPoint.y, x2: x, y2: y }; drawAngleCanvas(); }
+        function onPointerUp(e) { if (!drawing) return; e.preventDefault(); angleCanvas.releasePointerCapture(e.pointerId); let { x, y } = getPointerCoords(e); tempLine = { x1: startPoint.x, y1: startPoint.y, x2: x, y2: y }; drawAngleCanvas(); if (autoFixTimer) clearTimeout(autoFixTimer); autoFixTimer = setTimeout(() => { if (tempLine) { let stretched = getStretchedLine({x: tempLine.x1, y: tempLine.y1}, {x: tempLine.x2, y: tempLine.y2}, ANGLE_PAD+6); setRightAngleFromLine(stretched.start, stretched.end); tempLine = null; drawAngleCanvas(); resetHint(); } drawing = false; startPoint = null; autoFixTimer = null; }, 150); }
+        angleCanvas.addEventListener('pointerdown', onPointerDown); angleCanvas.addEventListener('pointermove', onPointerMove); angleCanvas.addEventListener('pointerup', onPointerUp);
+        curveCanvas.addEventListener('pointerdown', (e) => e.preventDefault()); curveCanvas.addEventListener('touchstart', (e) => e.preventDefault(), { passive: false });
+        function clearDrawingState() { if (autoFixTimer) clearTimeout(autoFixTimer); drawing = false; tempLine = null; startPoint = null; drawAngleCanvas(); }
         document.getElementById('angleStep1M').addEventListener('click', () => { clearDrawingState(); rightAngle = (rightAngle - 1 + 360) % 360; drawAngleCanvas(); resetHint(); });
         document.getElementById('angleStep5M').addEventListener('click', () => { clearDrawingState(); rightAngle = (rightAngle - 5 + 360) % 360; drawAngleCanvas(); resetHint(); });
         document.getElementById('angleStep10M').addEventListener('click', () => { clearDrawingState(); rightAngle = (rightAngle - 10 + 360) % 360; drawAngleCanvas(); resetHint(); });
@@ -935,24 +909,16 @@
         document.getElementById('angleStep20P').addEventListener('click', () => { clearDrawingState(); rightAngle = (rightAngle + 20) % 360; drawAngleCanvas(); resetHint(); });
         document.getElementById('resetCurveBtn').addEventListener('click', () => { clearDrawingState(); resetCurve(); resetHint(); });
         document.getElementById('submitAngleBtn').addEventListener('click', () => {
-            clearDrawingState();
-            const hint = document.getElementById('angleHint');
-            let rightMod = rightAngle % 180; if (rightMod < 0) rightMod += 180;
-            let diff = Math.abs(leftAngleMod - rightMod); diff = Math.min(diff, 180 - diff);
-            let leftInt = Math.round(leftAngleMod);
-            if (diff <= 5) {
-                if (diff === 0) { hint.innerText = `✓ 正确！真实角度为 ${leftInt}° (完全匹配)`; resetCurve(); rightAngle = 0; drawAngleCanvas(); setTimeout(() => { if (panels.slope.classList.contains('active')) resetHint(); }, 1500); }
-                else hint.innerText = `✓ 正确！真实角度为 ${leftInt}° (误差${Math.round(diff)}°)`;
-            } else hint.innerText = `✗ 错误`;
+            clearDrawingState(); const hint = document.getElementById('angleHint'); let rightMod = rightAngle % 180; if (rightMod < 0) rightMod += 180;
+            let diff = Math.abs(leftAngleMod - rightMod); diff = Math.min(diff, 180 - diff); let leftInt = Math.round(leftAngleMod);
+            if (diff <= 5) { if (diff === 0) { hint.innerText = `✓ 正确！真实角度为 ${leftInt}° (完全匹配)`; resetCurve(); rightAngle = 0; drawAngleCanvas(); setTimeout(() => { if (panels.slope.classList.contains('active')) resetHint(); }, 1500); } else hint.innerText = `✓ 正确！真实角度为 ${leftInt}° (误差${Math.round(diff)}°)`; } else hint.innerText = `✗ 错误`;
         });
         drawCurveAndPoints(); drawAngleCanvas();
 
         // ========== 坐标比例模块 (完全不变) ==========
         (function initCoordModule() {
-            const refCanvas = document.getElementById('coordRefCanvas');
-            const workCanvas = document.getElementById('coordWorkCanvas');
-            const refCtx = refCanvas.getContext('2d');
-            const workCtx = workCanvas.getContext('2d');
+            const refCanvas = document.getElementById('coordRefCanvas'), workCanvas = document.getElementById('coordWorkCanvas');
+            const refCtx = refCanvas.getContext('2d'), workCtx = workCanvas.getContext('2d');
             const BASE_SHAPES = {
                 triangle: { name: '🔺三角形', points: [{ x: 0.5, y: 0.15 }, { x: 0.2, y: 0.8 }, { x: 0.8, y: 0.8 }], closed: true },
                 rect: { name: '▯ 矩形', points: [{ x: 0.2, y: 0.2 }, { x: 0.8, y: 0.2 }, { x: 0.8, y: 0.8 }, { x: 0.2, y: 0.8 }], closed: true },
@@ -964,274 +930,44 @@
                 arrow: { name: '➤ 箭头', points: [{ x: 0.2, y: 0.3 }, { x: 0.6, y: 0.3 }, { x: 0.6, y: 0.1 }, { x: 0.9, y: 0.5 }, { x: 0.6, y: 0.9 }, { x: 0.6, y: 0.7 }, { x: 0.2, y: 0.7 }], closed: true }
             };
             const shapeKeys = Object.keys(BASE_SHAPES);
-            let currentShapeKey = 'triangle';
-            let targetPoints = [];
-            let userPoints = [];
-            const BOX_RATIO = 0.85;
-            let box = { x: 0, y: 0, size: 0 };
-            let showAnswer = false, showLines = true, showGrid = true;
-            let isDragging = false, dragIndex = -1;
-            const avgSpan = document.getElementById('coordAvgError');
-            const maxSpan = document.getElementById('coordMaxError');
-            const countSpan = document.getElementById('coordPointCount');
-            const toggleAnswer = document.getElementById('coordToggleAnswer');
-            const toggleLines = document.getElementById('coordToggleLines');
-            const toggleGrid = document.getElementById('coordToggleGrid');
-            function calcBox(w, h) {
-                const size = Math.min(w, h) * BOX_RATIO;
-                return { x: (w - size) / 2, y: (h - size) / 2, size };
-            }
-            function normToPixel(nx, ny) {
-                return { x: box.x + nx * box.size, y: box.y + ny * box.size };
-            }
-            function pixelToNorm(px, py) {
-                return {
-                    x: Math.min(1, Math.max(0, (px - box.x) / box.size)),
-                    y: Math.min(1, Math.max(0, (py - box.y) / box.size))
-                };
-            }
+            let currentShapeKey = 'triangle', targetPoints = [], userPoints = [];
+            const BOX_RATIO = 0.85; let box = { x: 0, y: 0, size: 0 };
+            let showAnswer = false, showLines = true, showGrid = true, isDragging = false, dragIndex = -1;
+            const avgSpan = document.getElementById('coordAvgError'), maxSpan = document.getElementById('coordMaxError'), countSpan = document.getElementById('coordPointCount');
+            const toggleAnswer = document.getElementById('coordToggleAnswer'), toggleLines = document.getElementById('coordToggleLines'), toggleGrid = document.getElementById('coordToggleGrid');
+            function calcBox(w, h) { const size = Math.min(w, h) * BOX_RATIO; return { x: (w - size) / 2, y: (h - size) / 2, size }; }
+            function normToPixel(nx, ny) { return { x: box.x + nx * box.size, y: box.y + ny * box.size }; }
+            function pixelToNorm(px, py) { return { x: Math.min(1, Math.max(0, (px - box.x) / box.size)), y: Math.min(1, Math.max(0, (py - box.y) / box.size)) }; }
             function generateRandomShape(baseKey) {
-                const base = BASE_SHAPES[baseKey].points;
-                const scale = 0.65 + Math.random() * 0.3;
-                const maxOffset = (1 - scale) * 0.7;
-                const offsetX = (Math.random() * 2 - 1) * maxOffset;
-                const offsetY = (Math.random() * 2 - 1) * maxOffset;
-                const jitter = 0.015 * scale;
-                return base.map(p => {
-                    let nx = p.x * scale + offsetX + (Math.random() - 0.5) * jitter;
-                    let ny = p.y * scale + offsetY + (Math.random() - 0.5) * jitter;
-                    return { x: Math.min(0.98, Math.max(0.02, nx)), y: Math.min(0.98, Math.max(0.02, ny)) };
-                });
+                const base = BASE_SHAPES[baseKey].points; const scale = 0.65 + Math.random() * 0.3; const maxOffset = (1 - scale) * 0.7;
+                const offsetX = (Math.random() * 2 - 1) * maxOffset, offsetY = (Math.random() * 2 - 1) * maxOffset, jitter = 0.015 * scale;
+                return base.map(p => { let nx = p.x * scale + offsetX + (Math.random() - 0.5) * jitter; let ny = p.y * scale + offsetY + (Math.random() - 0.5) * jitter; return { x: Math.min(0.98, Math.max(0.02, nx)), y: Math.min(0.98, Math.max(0.02, ny)) }; });
             }
-            function refreshShape() {
-                targetPoints = generateRandomShape(currentShapeKey);
-                userPoints = [];
-                drawCoordRef();
-                drawCoordWork();
-                updateStats();
-            }
-            function setShape(key) {
-                currentShapeKey = key;
-                refreshShape();
-                document.querySelectorAll('.shape-chip').forEach(chip => {
-                    chip.classList.toggle('active', chip.dataset.shape === key);
-                });
-            }
-            function drawGridInBox(ctx) {
-                const divisions = 4;
-                ctx.save();
-                ctx.strokeStyle = '#aaaaaa';
-                ctx.lineWidth = 1.2;
-                for (let i = 1; i < divisions; i++) {
-                    const pos = box.x + (i / divisions) * box.size;
-                    ctx.beginPath();
-                    ctx.moveTo(pos, box.y);
-                    ctx.lineTo(pos, box.y + box.size);
-                    ctx.stroke();
-                    ctx.beginPath();
-                    ctx.moveTo(box.x, pos);
-                    ctx.lineTo(box.x + box.size, pos);
-                    ctx.stroke();
-                }
-                ctx.restore();
-            }
-            function drawBox(ctx) {
-                ctx.save();
-                ctx.strokeStyle = '#2c3e4f';
-                ctx.lineWidth = 3.5;
-                ctx.strokeRect(box.x, box.y, box.size, box.size);
-                ctx.restore();
-            }
-            function drawCoordRef() {
-                const w = refCanvas.width, h = refCanvas.height;
-                box = calcBox(w, h);
-                refCtx.clearRect(0, 0, w, h);
-                refCtx.fillStyle = '#ffffff';
-                refCtx.fillRect(0, 0, w, h);
-                if (showGrid) drawGridInBox(refCtx);
-                const pts = targetPoints.map(p => normToPixel(p.x, p.y));
-                drawShape(refCtx, pts, BASE_SHAPES[currentShapeKey].closed);
-                pts.forEach((p, i) => {
-                    refCtx.beginPath();
-                    refCtx.arc(p.x, p.y, 7, 0, 2 * Math.PI);
-                    refCtx.fillStyle = '#1e2b3c';
-                    refCtx.shadowColor = '#aaa';
-                    refCtx.shadowBlur = 6;
-                    refCtx.fill();
-                    refCtx.shadowBlur = 0;
-                    refCtx.strokeStyle = '#ffffff';
-                    refCtx.lineWidth = 2.5;
-                    refCtx.stroke();
-                    refCtx.font = 'bold 13px system-ui, sans-serif';
-                    refCtx.fillStyle = '#1e2b3c';
-                    refCtx.shadowColor = '#ffffff';
-                    refCtx.shadowBlur = 3;
-                    refCtx.fillText(i + 1, p.x + 10, p.y - 10);
-                    refCtx.shadowBlur = 0;
-                });
-                drawBox(refCtx);
-            }
-            function drawCoordWork() {
-                const w = workCanvas.width, h = workCanvas.height;
-                box = calcBox(w, h);
-                workCtx.clearRect(0, 0, w, h);
-                workCtx.fillStyle = '#ffffff';
-                workCtx.fillRect(0, 0, w, h);
-                if (showGrid) drawGridInBox(workCtx);
-                if (showAnswer) {
-                    targetPoints.forEach((p, i) => {
-                        const pt = normToPixel(p.x, p.y);
-                        workCtx.beginPath();
-                        workCtx.arc(pt.x, pt.y, 6, 0, 2 * Math.PI);
-                        workCtx.fillStyle = '#e05a3a';
-                        workCtx.shadowColor = '#ff8a5c';
-                        workCtx.shadowBlur = 10;
-                        workCtx.fill();
-                        workCtx.shadowBlur = 0;
-                        workCtx.strokeStyle = '#ffffff';
-                        workCtx.lineWidth = 2;
-                        workCtx.stroke();
-                        workCtx.font = 'bold 12px system-ui, sans-serif';
-                        workCtx.fillStyle = '#1e2b3c';
-                        workCtx.shadowColor = '#ffffff';
-                        workCtx.shadowBlur = 4;
-                        workCtx.fillText(i + 1, pt.x + 9, pt.y - 9);
-                        workCtx.shadowBlur = 0;
-                    });
-                }
-                if (showLines && userPoints.length >= 2) {
-                    const up = userPoints.map(p => normToPixel(p.x, p.y));
-                    workCtx.beginPath();
-                    workCtx.moveTo(up[0].x, up[0].y);
-                    for (let i = 1; i < up.length; i++) workCtx.lineTo(up[i].x, up[i].y);
-                    if (BASE_SHAPES[currentShapeKey].closed && userPoints.length === targetPoints.length) workCtx.closePath();
-                    workCtx.strokeStyle = '#f2c75f';
-                    workCtx.lineWidth = 3.5;
-                    workCtx.stroke();
-                }
-                userPoints.forEach((p, i) => {
-                    const pt = normToPixel(p.x, p.y);
-                    workCtx.beginPath();
-                    workCtx.arc(pt.x, pt.y, 8, 0, 2 * Math.PI);
-                    workCtx.fillStyle = '#f2c75f';
-                    workCtx.shadowColor = '#e0a800';
-                    workCtx.shadowBlur = 8;
-                    workCtx.fill();
-                    workCtx.shadowBlur = 0;
-                    workCtx.strokeStyle = '#1e2b3c';
-                    workCtx.lineWidth = 2.5;
-                    workCtx.stroke();
-                    workCtx.font = 'bold 13px system-ui';
-                    workCtx.fillStyle = '#1e2b3c';
-                    workCtx.fillText(i + 1, pt.x + 12, pt.y - 12);
-                });
-                drawBox(workCtx);
-                updateStats();
-            }
-            function drawShape(ctx, pts, closed) {
-                ctx.beginPath();
-                ctx.moveTo(pts[0].x, pts[0].y);
-                for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
-                if (closed) ctx.closePath();
-                ctx.fillStyle = '#7a9fd0';
-                ctx.globalAlpha = 0.35;
-                ctx.fill();
-                ctx.globalAlpha = 1.0;
-                ctx.strokeStyle = '#4f7eb0';
-                ctx.lineWidth = 3;
-                ctx.stroke();
-            }
-            function updateStats() {
-                if (userPoints.length === 0) {
-                    avgSpan.textContent = '0.0';
-                    maxSpan.textContent = '0.0';
-                    countSpan.textContent = `0/${targetPoints.length}`;
-                    return;
-                }
-                const diag = Math.sqrt(box.size ** 2 + box.size ** 2);
-                let total = 0, max = 0;
-                const len = Math.min(userPoints.length, targetPoints.length);
-                for (let i = 0; i < len; i++) {
-                    const dx = (userPoints[i].x - targetPoints[i].x) * box.size;
-                    const dy = (userPoints[i].y - targetPoints[i].y) * box.size;
-                    const dist = Math.hypot(dx, dy);
-                    const err = (dist / diag) * 100;
-                    total += err;
-                    if (err > max) max = err;
-                }
-                avgSpan.textContent = (total / len).toFixed(2);
-                maxSpan.textContent = max.toFixed(2);
-                countSpan.textContent = `${userPoints.length}/${targetPoints.length}`;
-            }
-            function resizeCoordCanvases() {
-                drawCoordRef();
-                drawCoordWork();
-            }
-            function handleWorkPointer(e, isDown, isMove) {
-                e.preventDefault();
-                const rect = workCanvas.getBoundingClientRect();
-                const scaleX = workCanvas.width / rect.width;
-                const scaleY = workCanvas.height / rect.height;
-                let cx, cy;
-                if (e.touches) { cx = e.touches[0].clientX; cy = e.touches[0].clientY; }
-                else { cx = e.clientX; cy = e.clientY; }
-                const canvasX = (cx - rect.left) * scaleX;
-                const canvasY = (cy - rect.top) * scaleY;
-                const norm = pixelToNorm(canvasX, canvasY);
-                if (isDown) {
-                    const threshold = 30;
-                    let hit = -1;
-                    userPoints.forEach((p, i) => {
-                        const dx = (p.x - norm.x) * box.size;
-                        const dy = (p.y - norm.y) * box.size;
-                        if (Math.hypot(dx, dy) < threshold) hit = i;
-                    });
-                    if (hit !== -1) {
-                        isDragging = true;
-                        dragIndex = hit;
-                    } else if (userPoints.length < targetPoints.length) {
-                        userPoints.push({ x: norm.x, y: norm.y });
-                        drawCoordWork();
-                    }
-                } else if (isMove && isDragging) {
-                    userPoints[dragIndex] = { x: norm.x, y: norm.y };
-                    drawCoordWork();
-                } else if (!isDown && !isMove) {
-                    isDragging = false;
-                    dragIndex = -1;
-                }
-            }
-            workCanvas.addEventListener('touchstart', (e) => handleWorkPointer(e, true, false), { passive: false });
-            workCanvas.addEventListener('touchmove', (e) => handleWorkPointer(e, false, true), { passive: false });
-            workCanvas.addEventListener('touchend', () => { isDragging = false; });
-            workCanvas.addEventListener('mousedown', (e) => handleWorkPointer(e, true, false));
-            workCanvas.addEventListener('mousemove', (e) => handleWorkPointer(e, false, true));
-            workCanvas.addEventListener('mouseup', () => { isDragging = false; });
-            document.getElementById('coordNewShapeBtn').onclick = refreshShape;
-            document.getElementById('coordUndoBtn').onclick = () => { userPoints.pop(); drawCoordWork(); };
-            document.getElementById('coordClearMarksBtn').onclick = () => { userPoints = []; drawCoordWork(); };
-            toggleAnswer.onclick = () => { showAnswer = !showAnswer; toggleAnswer.classList.toggle('active', showAnswer); drawCoordWork(); };
-            toggleLines.onclick = () => { showLines = !showLines; toggleLines.classList.toggle('active', showLines); drawCoordWork(); };
-            toggleGrid.onclick = () => { showGrid = !showGrid; toggleGrid.classList.toggle('active', showGrid); drawCoordRef(); drawCoordWork(); };
-            const container = document.getElementById('shapeChipsContainer');
-            shapeKeys.forEach(key => {
-                const chip = document.createElement('button');
-                chip.className = 'shape-chip' + (key === 'triangle' ? ' active' : '');
-                chip.dataset.shape = key;
-                chip.textContent = BASE_SHAPES[key].name;
-                chip.onclick = () => setShape(key);
-                container.appendChild(chip);
-            });
-            refreshShape();
-            window.addEventListener('resize', () => {
-                if (panels.coord.classList.contains('active')) resizeCoordCanvases();
-            });
+            function refreshShape() { targetPoints = generateRandomShape(currentShapeKey); userPoints = []; drawCoordRef(); drawCoordWork(); updateStats(); }
+            function setShape(key) { currentShapeKey = key; refreshShape(); document.querySelectorAll('.shape-chip').forEach(chip => chip.classList.toggle('active', chip.dataset.shape === key)); }
+            function drawGridInBox(ctx) { const divisions = 4; ctx.save(); ctx.strokeStyle = '#aaaaaa'; ctx.lineWidth = 1.2; for (let i = 1; i < divisions; i++) { const pos = box.x + (i / divisions) * box.size; ctx.beginPath(); ctx.moveTo(pos, box.y); ctx.lineTo(pos, box.y + box.size); ctx.stroke(); ctx.beginPath(); ctx.moveTo(box.x, pos); ctx.lineTo(box.x + box.size, pos); ctx.stroke(); } ctx.restore(); }
+            function drawBox(ctx) { ctx.save(); ctx.strokeStyle = '#2c3e4f'; ctx.lineWidth = 3.5; ctx.strokeRect(box.x, box.y, box.size, box.size); ctx.restore(); }
+            function drawCoordRef() { const w = refCanvas.width, h = refCanvas.height; box = calcBox(w, h); refCtx.clearRect(0, 0, w, h); refCtx.fillStyle = '#ffffff'; refCtx.fillRect(0, 0, w, h); if (showGrid) drawGridInBox(refCtx); const pts = targetPoints.map(p => normToPixel(p.x, p.y)); drawShape(refCtx, pts, BASE_SHAPES[currentShapeKey].closed); pts.forEach((p, i) => { refCtx.beginPath(); refCtx.arc(p.x, p.y, 7, 0, 2 * Math.PI); refCtx.fillStyle = '#1e2b3c'; refCtx.shadowColor = '#aaa'; refCtx.shadowBlur = 6; refCtx.fill(); refCtx.shadowBlur = 0; refCtx.strokeStyle = '#ffffff'; refCtx.lineWidth = 2.5; refCtx.stroke(); refCtx.font = 'bold 13px system-ui, sans-serif'; refCtx.fillStyle = '#1e2b3c'; refCtx.shadowColor = '#ffffff'; refCtx.shadowBlur = 3; refCtx.fillText(i + 1, p.x + 10, p.y - 10); refCtx.shadowBlur = 0; }); drawBox(refCtx); }
+            function drawCoordWork() { const w = workCanvas.width, h = workCanvas.height; box = calcBox(w, h); workCtx.clearRect(0, 0, w, h); workCtx.fillStyle = '#ffffff'; workCtx.fillRect(0, 0, w, h); if (showGrid) drawGridInBox(workCtx); if (showAnswer) { targetPoints.forEach((p, i) => { const pt = normToPixel(p.x, p.y); workCtx.beginPath(); workCtx.arc(pt.x, pt.y, 6, 0, 2 * Math.PI); workCtx.fillStyle = '#e05a3a'; workCtx.shadowColor = '#ff8a5c'; workCtx.shadowBlur = 10; workCtx.fill(); workCtx.shadowBlur = 0; workCtx.strokeStyle = '#ffffff'; workCtx.lineWidth = 2; workCtx.stroke(); workCtx.font = 'bold 12px system-ui, sans-serif'; workCtx.fillStyle = '#1e2b3c'; workCtx.shadowColor = '#ffffff'; workCtx.shadowBlur = 4; workCtx.fillText(i + 1, pt.x + 9, pt.y - 9); workCtx.shadowBlur = 0; }); } if (showLines && userPoints.length >= 2) { const up = userPoints.map(p => normToPixel(p.x, p.y)); workCtx.beginPath(); workCtx.moveTo(up[0].x, up[0].y); for (let i = 1; i < up.length; i++) workCtx.lineTo(up[i].x, up[i].y); if (BASE_SHAPES[currentShapeKey].closed && userPoints.length === targetPoints.length) workCtx.closePath(); workCtx.strokeStyle = '#f2c75f'; workCtx.lineWidth = 3.5; workCtx.stroke(); } userPoints.forEach((p, i) => { const pt = normToPixel(p.x, p.y); workCtx.beginPath(); workCtx.arc(pt.x, pt.y, 8, 0, 2 * Math.PI); workCtx.fillStyle = '#f2c75f'; workCtx.shadowColor = '#e0a800'; workCtx.shadowBlur = 8; workCtx.fill(); workCtx.shadowBlur = 0; workCtx.strokeStyle = '#1e2b3c'; workCtx.lineWidth = 2.5; workCtx.stroke(); workCtx.font = 'bold 13px system-ui'; workCtx.fillStyle = '#1e2b3c'; workCtx.fillText(i + 1, pt.x + 12, pt.y - 12); }); drawBox(workCtx); updateStats(); }
+            function drawShape(ctx, pts, closed) { ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y); for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y); if (closed) ctx.closePath(); ctx.fillStyle = '#7a9fd0'; ctx.globalAlpha = 0.35; ctx.fill(); ctx.globalAlpha = 1.0; ctx.strokeStyle = '#4f7eb0'; ctx.lineWidth = 3; ctx.stroke(); }
+            function updateStats() { if (userPoints.length === 0) { avgSpan.textContent = '0.0'; maxSpan.textContent = '0.0'; countSpan.textContent = `0/${targetPoints.length}`; return; } const diag = Math.sqrt(box.size ** 2 + box.size ** 2); let total = 0, max = 0; const len = Math.min(userPoints.length, targetPoints.length); for (let i = 0; i < len; i++) { const dx = (userPoints[i].x - targetPoints[i].x) * box.size; const dy = (userPoints[i].y - targetPoints[i].y) * box.size; const err = (Math.hypot(dx, dy) / diag) * 100; total += err; if (err > max) max = err; } avgSpan.textContent = (total / len).toFixed(2); maxSpan.textContent = max.toFixed(2); countSpan.textContent = `${userPoints.length}/${targetPoints.length}`; }
+            function resizeCoordCanvases() { drawCoordRef(); drawCoordWork(); }
+            function handleWorkPointer(e, isDown, isMove) { e.preventDefault(); const rect = workCanvas.getBoundingClientRect(); const scaleX = workCanvas.width / rect.width, scaleY = workCanvas.height / rect.height; let cx, cy; if (e.touches) { cx = e.touches[0].clientX; cy = e.touches[0].clientY; } else { cx = e.clientX; cy = e.clientY; } const canvasX = (cx - rect.left) * scaleX, canvasY = (cy - rect.top) * scaleY; const norm = pixelToNorm(canvasX, canvasY); if (isDown) { const threshold = 30; let hit = -1; userPoints.forEach((p, i) => { if (Math.hypot((p.x - norm.x) * box.size, (p.y - norm.y) * box.size) < threshold) hit = i; }); if (hit !== -1) { isDragging = true; dragIndex = hit; } else if (userPoints.length < targetPoints.length) { userPoints.push({ x: norm.x, y: norm.y }); drawCoordWork(); } } else if (isMove && isDragging) { userPoints[dragIndex] = { x: norm.x, y: norm.y }; drawCoordWork(); } else if (!isDown && !isMove) { isDragging = false; dragIndex = -1; } }
+            workCanvas.addEventListener('touchstart', (e) => handleWorkPointer(e, true, false), { passive: false }); workCanvas.addEventListener('touchmove', (e) => handleWorkPointer(e, false, true), { passive: false }); workCanvas.addEventListener('touchend', () => { isDragging = false; }); workCanvas.addEventListener('mousedown', (e) => handleWorkPointer(e, true, false)); workCanvas.addEventListener('mousemove', (e) => handleWorkPointer(e, false, true)); workCanvas.addEventListener('mouseup', () => { isDragging = false; });
+            document.getElementById('coordNewShapeBtn').onclick = refreshShape; document.getElementById('coordUndoBtn').onclick = () => { userPoints.pop(); drawCoordWork(); }; document.getElementById('coordClearMarksBtn').onclick = () => { userPoints = []; drawCoordWork(); };
+            toggleAnswer.onclick = () => { showAnswer = !showAnswer; toggleAnswer.classList.toggle('active', showAnswer); drawCoordWork(); }; toggleLines.onclick = () => { showLines = !showLines; toggleLines.classList.toggle('active', showLines); drawCoordWork(); }; toggleGrid.onclick = () => { showGrid = !showGrid; toggleGrid.classList.toggle('active', showGrid); drawCoordRef(); drawCoordWork(); };
+            const container = document.getElementById('shapeChipsContainer'); shapeKeys.forEach(key => { const chip = document.createElement('button'); chip.className = 'shape-chip' + (key === 'triangle' ? ' active' : ''); chip.dataset.shape = key; chip.textContent = BASE_SHAPES[key].name; chip.onclick = () => setShape(key); container.appendChild(chip); });
+            refreshShape(); window.addEventListener('resize', () => { if (panels.coord.classList.contains('active')) resizeCoordCanvases(); });
         })();
+
         window.addEventListener('resize', () => {
-            if (panels.space.classList.contains('active')) drawGridCanvas();
+            if (panels.space.classList.contains('active')) { drawGridCanvas(); updateRatioDisplay(); }
             if (panels.slope.classList.contains('active')) { drawCurveAndPoints(); drawAngleCanvas(); }
             if (panels.coord.classList.contains('active')) { drawCoordRef(); drawCoordWork(); }
         });
+
+        // 初始化比例显示状态 (默认隐藏)
+        newGrid();  // 内部已调用drawGridCanvas与updateRatioDisplay
     })();
 </script>
 </body>
